@@ -1,51 +1,60 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace AutoBuyer.Domain.Entities;
 
-namespace AutoBuyer.Domain.Entities
+public sealed class Store : Entity
 {
-    public class Store : Entity
+    private Store()
     {
-        public string? Name { get; private set; }
+        // Necessário para o Entity Framework.
+    }
 
-        public string? BaseUrl { get; private set; }
+    public Store(string name, string baseUrl)
+    {
+        SetName(name);
+        SetBaseUrl(baseUrl);
 
-        public bool IsEnabled { get; private set; }
+        IsEnabled = true;
+        CreatedAt = DateTime.UtcNow;
+    }
 
-        public DateTime CreatedAt { get; private set; }
+    public string Name { get; private set; } = string.Empty;
 
-        public Store(string name, string baseUrl)
+    public string BaseUrl { get; private set; } = string.Empty;
+
+    public bool IsEnabled { get; private set; }
+
+    public DateTime CreatedAt { get; private set; }
+
+    public void Enable()
+    {
+        IsEnabled = true;
+    }
+
+    public void Disable()
+    {
+        IsEnabled = false;
+    }
+
+    public void SetName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException(
+                "O nome da loja é obrigatório.",
+                nameof(name));
+
+        Name = name.Trim();
+    }
+
+    public void SetBaseUrl(string baseUrl)
+    {
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp &&
+             uri.Scheme != Uri.UriSchemeHttps))
         {
-            SetName(name);
-            SetBaseUrl(baseUrl);
-
-            IsEnabled = true;
-            CreatedAt = DateTime.UtcNow;
+            throw new ArgumentException(
+                "A URL base da loja é inválida.",
+                nameof(baseUrl));
         }
 
-        public void SetName(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Store name is required.");
-
-            Name = name.Trim();
-        }
-        public void SetBaseUrl(string url)
-        {
-            if (!Uri.TryCreate(url, UriKind.Absolute, out _))
-                throw new ArgumentException("Invalid URL.");
-
-            BaseUrl = url.TrimEnd('/');
-        }
-        public void Enable()
-        {
-            IsEnabled = true;
-        }
-        public void Disable()
-        {
-            IsEnabled = false;
-        }
+        BaseUrl = uri.GetLeftPart(UriPartial.Authority);
     }
 }

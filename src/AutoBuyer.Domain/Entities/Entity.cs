@@ -1,18 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace AutoBuyer.Domain.Entities;
 
-namespace AutoBuyer.Domain.Entities
+public abstract class Entity
 {
-    public class Entity
+    protected Entity()
     {
-        public Guid Id { get; protected set; }
-
-        protected Entity()
-        {
-            Id = Guid.NewGuid();
-        }
+        Id = Guid.NewGuid();
     }
+
+    public Guid Id { get; protected set; }
 }
