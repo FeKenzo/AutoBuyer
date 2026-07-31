@@ -1,3 +1,6 @@
+using AutoBuyer.Application;
+using AutoBuyer.Infrastructure;
+
 namespace AutoBuyer.Api;
 
 public class Program
@@ -8,6 +11,10 @@ public class Program
 
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
+
+        builder.Services.AddApplication();
+        builder.Services.AddInfrastructure(
+            builder.Configuration);
 
         var app = builder.Build();
 
