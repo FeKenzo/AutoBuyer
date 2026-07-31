@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AutoBuyer.Domain\AutoBuyer.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
