@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace AutoBuyer.Domain.Entities
 {
-    internal class User
+    public class User : Entity
     {
     }
 }

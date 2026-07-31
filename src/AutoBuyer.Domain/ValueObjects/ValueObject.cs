@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AutoBuyer.Domain.Entities
+namespace AutoBuyer.Domain.ValueObjects
 {
-    public class ProductTarget : Entity
+    public abstract class ValueObject
     {
     }
 }

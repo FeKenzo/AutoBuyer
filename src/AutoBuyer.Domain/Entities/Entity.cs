@@ -6,7 +6,13 @@ using System.Threading.Tasks;
 
 namespace AutoBuyer.Domain.Entities
 {
-    public class ProductTarget : Entity
+    public class Entity
     {
+        public Guid Id { get; protected set; }
+
+        protected Entity()
+        {
+            Id = Guid.NewGuid();
+        }
     }
 }
