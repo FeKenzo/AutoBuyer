@@ -1,4 +1,6 @@
 namespace AutoBuyer.Api;
+using AutoBuyer.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 public class Program
 {
@@ -8,6 +10,12 @@ public class Program
 
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
+
+        builder.Services.AddDbContext<AutoBuyerDbContext>(options =>
+        {
+            options.UseNpgsql(
+                builder.Configuration.GetConnectionString("Postgres"));
+        });
 
         var app = builder.Build();
 
