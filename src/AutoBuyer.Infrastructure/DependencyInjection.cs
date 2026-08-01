@@ -3,6 +3,7 @@ using AutoBuyer.Application.Monitoring;
 using AutoBuyer.Application.Notifications;
 using AutoBuyer.Infrastructure.Data;
 using AutoBuyer.Infrastructure.Monitoring;
+using AutoBuyer.Infrastructure.Monitoring.Extractors;
 using AutoBuyer.Infrastructure.Notifications;
 using AutoBuyer.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +43,24 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(
             provider =>
                 provider.GetRequiredService<AutoBuyerDbContext>());
+
+        services.AddScoped<
+            IProductPriceReader,
+            PlaywrightProductPriceReader>();
+
+        services.AddScoped<
+            IStorePriceExtractor,
+            PichauProductPriceExtractor>();
+
+        services.AddScoped<
+            IStorePriceExtractor,
+            TerabyteProductPriceExtractor>();
+
+        services.AddScoped<
+            IStorePriceExtractor,
+            GenericProductPriceExtractor>();
+
+        services.AddScoped<StorePriceExtractorResolver>();
 
         services.AddScoped<
             IProductPriceReader,
