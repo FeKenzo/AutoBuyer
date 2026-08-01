@@ -1,7 +1,9 @@
 ﻿using AutoBuyer.Application.Abstractions.Persistence;
 using AutoBuyer.Application.Monitoring;
+using AutoBuyer.Application.Notifications;
 using AutoBuyer.Infrastructure.Data;
 using AutoBuyer.Infrastructure.Monitoring;
+using AutoBuyer.Infrastructure.Notifications;
 using AutoBuyer.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -12,8 +14,8 @@ namespace AutoBuyer.Infrastructure;
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    this IServiceCollection services,
+    IConfiguration configuration)
     {
         var connectionString =
             configuration.GetConnectionString("Postgres")
@@ -40,10 +42,23 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(
             provider =>
                 provider.GetRequiredService<AutoBuyerDbContext>());
-        
+
         services.AddScoped<
             IProductPriceReader,
             PlaywrightProductPriceReader>();
+
+        services.Configure<TelegramOptions>(
+            configuration.GetSection(TelegramOptions.SectionName));
+
+        services.AddHttpClient<
+                IPriceAlertNotifier,
+                TelegramPriceAlertNotifier>(client =>
+                {
+                    client.BaseAddress = new Uri(
+                    "https://api.telegram.org/");
+
+                    client.Timeout = TimeSpan.FromSeconds(15);
+                });
 
         return services;
     }

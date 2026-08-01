@@ -1,5 +1,6 @@
 ﻿using AutoBuyer.Application.Abstractions.Persistence;
 using AutoBuyer.Application.Monitoring;
+using AutoBuyer.Application.Notifications;
 using AutoBuyer.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
@@ -11,6 +12,7 @@ public sealed class MonitorProductTargetsUseCase
     private readonly IProductTargetRepository _productTargetRepository;
     private readonly IPriceHistoryRepository _priceHistoryRepository;
     private readonly IProductPriceReader _priceReader;
+    private readonly IPriceAlertNotifier _priceAlertNotifier;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<MonitorProductTargetsUseCase> _logger;
 
@@ -18,12 +20,14 @@ public sealed class MonitorProductTargetsUseCase
         IProductTargetRepository productTargetRepository,
         IPriceHistoryRepository priceHistoryRepository,
         IProductPriceReader priceReader,
+        IPriceAlertNotifier priceAlertNotifier,
         IUnitOfWork unitOfWork,
         ILogger<MonitorProductTargetsUseCase> logger)
     {
         _productTargetRepository = productTargetRepository;
         _priceHistoryRepository = priceHistoryRepository;
         _priceReader = priceReader;
+        _priceAlertNotifier = priceAlertNotifier;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -41,54 +45,18 @@ public sealed class MonitorProductTargetsUseCase
 
         foreach (var target in targets)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return;
+            cancellationToken.ThrowIfCancellationRequested();
 
             try
             {
-                var result = await _priceReader.ReadAsync(
-                    target.ProductUrl,
+                await MonitorTargetAsync(
+                    target,
                     cancellationToken);
-
-                if (!result.Success || result.Price is null)
-                {
-                    _logger.LogWarning(
-                        "Não foi possível obter o preço de {ProductName}. Motivo: {Error}",
-                        target.Name,
-                        result.Error);
-
-                    continue;
-                }
-
-                var priceHistory = new PriceHistory(
-                    target.Id,
-                    result.Price.Value,
-                    result.IsAvailable,
-                    DateTime.UtcNow);
-
-                await _priceHistoryRepository.AddAsync(
-                    priceHistory,
-                    cancellationToken);
-
-                await _unitOfWork.SaveChangesAsync(
-                    cancellationToken);
-
-                if (result.Price <= target.TargetPrice)
-                {
-                    _logger.LogWarning(
-                        "Preço-alvo atingido. Produto: {ProductName}. Atual: {CurrentPrice}. Alvo: {TargetPrice}",
-                        target.Name,
-                        result.Price,
-                        target.TargetPrice);
-                }
-                else
-                {
-                    _logger.LogInformation(
-                        "Preço capturado. Produto: {ProductName}. Atual: {CurrentPrice}. Alvo: {TargetPrice}",
-                        target.Name,
-                        result.Price,
-                        target.TargetPrice);
-                }
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception exception)
             {
@@ -97,6 +65,110 @@ public sealed class MonitorProductTargetsUseCase
                     "Erro ao monitorar o produto {ProductName}.",
                     target.Name);
             }
+        }
+    }
+
+    private async Task MonitorTargetAsync(
+        ProductTarget target,
+        CancellationToken cancellationToken)
+    {
+        // Precisamos consultar antes de inserir o preço novo.
+        var previousPriceHistory =
+            await _priceHistoryRepository
+                .GetLatestByProductTargetIdAsync(
+                    target.Id,
+                    cancellationToken);
+
+        var result = await _priceReader.ReadAsync(
+            target.ProductUrl,
+            cancellationToken);
+
+        if (!result.Success || result.Price is null)
+        {
+            _logger.LogWarning(
+                "Não foi possível obter o preço de {ProductName}. Motivo: {Error}",
+                target.Name,
+                result.Error);
+
+            return;
+        }
+
+        var currentPrice = result.Price.Value;
+        var capturedAt = DateTime.UtcNow;
+
+        var priceHistory = new PriceHistory(
+            target.Id,
+            currentPrice,
+            result.IsAvailable,
+            capturedAt);
+
+        await _priceHistoryRepository.AddAsync(
+            priceHistory,
+            cancellationToken);
+
+        // Primeiro persistimos a captura.
+        await _unitOfWork.SaveChangesAsync(
+            cancellationToken);
+
+        var targetReached =
+            currentPrice <= target.TargetPrice;
+
+        var targetWasReachedPreviously =
+            previousPriceHistory is not null &&
+            previousPriceHistory.Price <= target.TargetPrice;
+
+        var crossedTarget =
+            targetReached &&
+            !targetWasReachedPreviously;
+
+        if (!targetReached)
+        {
+            _logger.LogInformation(
+                "Preço capturado. Produto: {ProductName}. Atual: {CurrentPrice}. Alvo: {TargetPrice}",
+                target.Name,
+                currentPrice,
+                target.TargetPrice);
+
+            return;
+        }
+
+        _logger.LogWarning(
+            "Preço-alvo atingido. Produto: {ProductName}. Atual: {CurrentPrice}. Alvo: {TargetPrice}",
+            target.Name,
+            currentPrice,
+            target.TargetPrice);
+
+        if (!crossedTarget)
+        {
+            _logger.LogInformation(
+                "Notificação não enviada para {ProductName}, pois o preço já estava abaixo do alvo.",
+                target.Name);
+
+            return;
+        }
+
+        var notification = new PriceAlertNotification(
+            target.Id,
+            target.Name,
+            target.Store?.Name ?? "Loja não identificada",
+            target.ProductUrl,
+            currentPrice,
+            target.TargetPrice,
+            capturedAt);
+
+        try
+        {
+            await _priceAlertNotifier.NotifyAsync(
+                notification,
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            // A captura permanece salva mesmo se o Telegram falhar.
+            _logger.LogError(
+                exception,
+                "O preço de {ProductName} foi salvo, mas a notificação falhou.",
+                target.Name);
         }
     }
 }
