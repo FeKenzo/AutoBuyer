@@ -13,12 +13,15 @@ public interface IProductTargetRepository
         Guid id,
         CancellationToken cancellationToken);
 
+    Task<ProductTarget?> GetTrackedByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<ProductTarget>> GetAllAsync(
         CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<ProductTarget>>
-        GetMonitoringEnabledAsync(
-            CancellationToken cancellationToken);
+    Task<IReadOnlyList<ProductTarget>> GetMonitoringEnabledAsync(
+        CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ProductTargetWithLatestPrice>>
         GetAllWithLatestPriceAsync(
@@ -28,4 +31,6 @@ public interface IProductTargetRepository
         GetByIdWithLatestPriceAsync(
             Guid id,
             CancellationToken cancellationToken);
+
+    void Remove(ProductTarget productTarget);
 }

@@ -130,4 +130,19 @@ public sealed class ProductTargetRepository
                     .FirstOrDefault()))
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public Task<ProductTarget?> GetTrackedByIdAsync(
+    Guid id,
+    CancellationToken cancellationToken)
+    {
+        return _dbContext.ProductTargets
+            .FirstOrDefaultAsync(
+                target => target.Id == id,
+                cancellationToken);
+    }
+
+    public void Remove(ProductTarget productTarget)
+    {
+        _dbContext.ProductTargets.Remove(productTarget);
+    }
 }
