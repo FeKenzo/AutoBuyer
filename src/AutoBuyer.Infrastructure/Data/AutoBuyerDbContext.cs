@@ -23,6 +23,9 @@ public sealed class AutoBuyerDbContext
 
     public DbSet<User> Users => Set<User>();
 
+    public DbSet<StoreMonitoringState> StoreMonitoringStates =>
+        Set<StoreMonitoringState>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

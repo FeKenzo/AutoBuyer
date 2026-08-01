@@ -15,6 +15,7 @@ public sealed class MonitorProductTargetsUseCase
     private readonly IPriceAlertNotifier _priceAlertNotifier;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<MonitorProductTargetsUseCase> _logger;
+    private readonly IStoreAccessPolicy _storeAccessPolicy;
 
     public MonitorProductTargetsUseCase(
         IProductTargetRepository productTargetRepository,
@@ -22,7 +23,8 @@ public sealed class MonitorProductTargetsUseCase
         IProductPriceReader priceReader,
         IPriceAlertNotifier priceAlertNotifier,
         IUnitOfWork unitOfWork,
-        ILogger<MonitorProductTargetsUseCase> logger)
+        ILogger<MonitorProductTargetsUseCase> logger,
+        IStoreAccessPolicy storeAccessPolicy)
     {
         _productTargetRepository = productTargetRepository;
         _priceHistoryRepository = priceHistoryRepository;
@@ -30,6 +32,7 @@ public sealed class MonitorProductTargetsUseCase
         _priceAlertNotifier = priceAlertNotifier;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _storeAccessPolicy = storeAccessPolicy;
     }
 
     public async Task ExecuteAsync(
@@ -83,8 +86,33 @@ public sealed class MonitorProductTargetsUseCase
             target.ProductUrl,
             cancellationToken);
 
+        if (!Uri.TryCreate(
+            target.ProductUrl,
+            UriKind.Absolute,
+            out var productUri))
+        {
+            _logger.LogWarning(
+                "URL inválida para o produto {ProductName}.",
+                target.Name);
+
+            return;
+        }
+
+        var canExecute =
+            await _storeAccessPolicy.CanExecuteAsync(
+                productUri,
+                cancellationToken);
+
+        if (!canExecute)
+            return;
+
         if (!result.Success || result.Price is null)
         {
+            await _storeAccessPolicy.RegisterFailureAsync(
+                productUri,
+                result,
+                cancellationToken);
+
             _logger.LogWarning(
                 "Não foi possível obter o preço de {ProductName}. Motivo: {Error}",
                 target.Name,
@@ -92,6 +120,10 @@ public sealed class MonitorProductTargetsUseCase
 
             return;
         }
+
+        await _storeAccessPolicy.RegisterSuccessAsync(
+            productUri,
+            cancellationToken);
 
         var currentPrice = result.Price.Value;
         var capturedAt = DateTime.UtcNow;

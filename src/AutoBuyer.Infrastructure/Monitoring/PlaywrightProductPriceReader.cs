@@ -76,7 +76,8 @@ public sealed class PlaywrightProductPriceReader
             if (!response.Ok)
             {
                 return ProductPriceResult.Failed(
-                    $"A página retornou HTTP {response.Status}.");
+                    $"A página retornou HTTP {response.Status}.",
+                    response.Status);
             }
 
             await WaitForPageAsync(page);
@@ -88,10 +89,27 @@ public sealed class PlaywrightProductPriceReader
                 extractor.GetType().Name,
                 productUri.Host);
 
-            return await extractor.ExtractAsync(
+            var extractionResult = await extractor.ExtractAsync(
                 page,
                 productUri,
                 cancellationToken);
+
+            if (extractionResult.Success)
+            {
+                return extractionResult;
+            }
+
+            var challenge = await DetectChallengeAsync(page);
+
+            if (challenge is not null)
+            {
+                return ProductPriceResult.Failed(
+                    challenge,
+                    response.Status,
+                    requiresManualAction: true);
+            }
+
+            return extractionResult;
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
@@ -136,5 +154,72 @@ public sealed class PlaywrightProductPriceReader
         }
 
         await page.WaitForTimeoutAsync(1_500);
+    }
+
+    private static async Task<string?> DetectChallengeAsync(
+    IPage page)
+    {
+        var challengeSelectors = new Dictionary<string, string>
+        {
+            ["iframe[src*='captcha']"] = "iframe de CAPTCHA",
+            ["iframe[src*='recaptcha']"] = "Google reCAPTCHA",
+            ["iframe[src*='challenges.cloudflare.com']"] = "Cloudflare Turnstile",
+            [".g-recaptcha"] = "Google reCAPTCHA",
+            ["[data-sitekey]"] = "componente com site key",
+            ["#cf-challenge-running"] = "challenge do Cloudflare",
+            ["#challenge-running"] = "challenge de segurança",
+            ["input[name='cf-turnstile-response']"] = "Cloudflare Turnstile"
+        };
+
+        foreach (var challengeSelector in challengeSelectors)
+        {
+            var locator = page.Locator(challengeSelector.Key);
+
+            var count = Math.Min(
+                await locator.CountAsync(),
+                5);
+
+            for (var index = 0; index < count; index++)
+            {
+                try
+                {
+                    if (await locator.Nth(index).IsVisibleAsync())
+                    {
+                        return
+                            $"A página apresentou um challenge visível: " +
+                            $"{challengeSelector.Value}.";
+                    }
+                }
+                catch (PlaywrightException)
+                {
+                    // O elemento pode ter desaparecido durante a validação.
+                }
+            }
+        }
+
+        var title = await page.TitleAsync();
+
+        var challengeTitles = new[]
+        {
+        "Just a moment",
+        "Attention Required",
+        "Access Denied",
+        "Verifique se você é humano",
+        "Checking your browser"
+    };
+
+        var matchingTitle = challengeTitles.FirstOrDefault(
+            value => title.Contains(
+                value,
+                StringComparison.OrdinalIgnoreCase));
+
+        if (matchingTitle is not null)
+        {
+            return
+                $"A página apresentou um título de challenge: " +
+                $"'{matchingTitle}'.";
+        }
+
+        return null;
     }
 }

@@ -1,4 +1,5 @@
-﻿using AutoBuyer.Application.UseCases.Monitoring;
+﻿using AutoBuyer.Application.Monitoring;
+using AutoBuyer.Application.UseCases.Monitoring;
 using AutoBuyer.Application.UseCases.ProductTargets.ChangeMonitoringStatus;
 using AutoBuyer.Application.UseCases.ProductTargets.Create;
 using AutoBuyer.Application.UseCases.ProductTargets.Delete;
@@ -41,6 +42,10 @@ public static class DependencyInjection
         services.AddScoped<
             IMonitorProductTargetsUseCase,
             MonitorProductTargetsUseCase>();
+       
+        services.AddScoped<
+            IStoreAccessPolicy,
+            StoreAccessPolicy>();
 
         return services;
     }

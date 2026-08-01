@@ -66,6 +66,10 @@ public static class DependencyInjection
             IProductPriceReader,
             PlaywrightProductPriceReader>();
 
+        services.AddScoped<
+            IStoreMonitoringStateRepository,
+            StoreMonitoringStateRepository>();
+
         services.Configure<TelegramOptions>(
             configuration.GetSection(TelegramOptions.SectionName));
 
