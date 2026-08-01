@@ -18,9 +18,10 @@ public sealed class GetProductTargetByIdUseCase
         Guid id,
         CancellationToken cancellationToken)
     {
-        var target = await _repository.GetByIdAsync(
-            id,
-            cancellationToken);
+        var target =
+            await _repository.GetByIdWithLatestPriceAsync(
+                id,
+                cancellationToken);
 
         if (target is null)
             return null;
@@ -28,10 +29,14 @@ public sealed class GetProductTargetByIdUseCase
         return new ProductTargetResponse(
             target.Id,
             target.StoreId,
-            target.Store?.Name ?? string.Empty,
+            target.StoreName,
             target.Name,
             target.ProductUrl,
             target.TargetPrice,
+            target.CurrentPrice,
+            target.CurrentPrice.HasValue &&
+            target.CurrentPrice.Value <= target.TargetPrice,
+            target.LastCapturedAt,
             target.AutoBuyEnabled,
             target.MonitoringEnabled,
             target.CreatedAt);

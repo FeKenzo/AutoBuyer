@@ -7,6 +7,9 @@ public sealed record ProductTargetResponse(
     string Name,
     string ProductUrl,
     decimal TargetPrice,
+    decimal? CurrentPrice,
+    bool TargetReached,
+    DateTime? LastCapturedAt,
     bool AutoBuyEnabled,
     bool MonitoringEnabled,
     DateTime CreatedAt);

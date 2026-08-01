@@ -1,6 +1,6 @@
 [
   {
-    "Name": "New Profile",
+    "Name": "exec all",
     "Projects": [
       {
         "Path": "src\\AutoBuyer.Api\\AutoBuyer.Api.csproj",
