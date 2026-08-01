@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "src\\AutoBuyer.Api\\AutoBuyer.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\AutoBuyer.Worker\\AutoBuyer.Worker.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

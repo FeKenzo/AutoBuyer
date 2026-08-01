@@ -14,4 +14,7 @@ public interface IProductTargetRepository
 
     Task<IReadOnlyList<ProductTarget>> GetAllAsync(
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ProductTarget>> GetMonitoringEnabledAsync(
+        CancellationToken cancellationToken);
 }

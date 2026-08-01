@@ -46,4 +46,18 @@ public sealed class ProductTargetRepository
             .OrderByDescending(target => target.CreatedAt)
             .ToListAsync(cancellationToken);
     }
+    public async Task<IReadOnlyList<ProductTarget>>
+    GetMonitoringEnabledAsync(
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.ProductTargets
+            .AsNoTracking()
+            .Where(target => target.MonitoringEnabled)
+            .Where(target =>
+                target.Store != null &&
+                target.Store.IsEnabled)
+            .Include(target => target.Store)
+            .OrderBy(target => target.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
 }

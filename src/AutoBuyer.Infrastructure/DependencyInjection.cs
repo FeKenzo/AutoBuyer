@@ -1,5 +1,7 @@
 ﻿using AutoBuyer.Application.Abstractions.Persistence;
+using AutoBuyer.Application.Monitoring;
 using AutoBuyer.Infrastructure.Data;
+using AutoBuyer.Infrastructure.Monitoring;
 using AutoBuyer.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -27,11 +29,21 @@ public static class DependencyInjection
             IProductTargetRepository,
             ProductTargetRepository>();
 
-        services.AddScoped<IStoreRepository, StoreRepository>();
+        services.AddScoped<
+            IPriceHistoryRepository,
+            PriceHistoryRepository>();
+
+        services.AddScoped<
+            IStoreRepository,
+            StoreRepository>();
 
         services.AddScoped<IUnitOfWork>(
             provider =>
                 provider.GetRequiredService<AutoBuyerDbContext>());
+        
+        services.AddScoped<
+            IProductPriceReader,
+            PlaywrightProductPriceReader>();
 
         return services;
     }

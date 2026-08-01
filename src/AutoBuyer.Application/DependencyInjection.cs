@@ -1,4 +1,5 @@
-﻿using AutoBuyer.Application.UseCases.ProductTargets.Create;
+﻿using AutoBuyer.Application.UseCases.Monitoring;
+using AutoBuyer.Application.UseCases.ProductTargets.Create;
 using AutoBuyer.Application.UseCases.ProductTargets.GetAll;
 using AutoBuyer.Application.UseCases.ProductTargets.GetById;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +22,10 @@ public static class DependencyInjection
         services.AddScoped<
             IGetProductTargetByIdUseCase,
             GetProductTargetByIdUseCase>();
+
+        services.AddScoped<
+            IMonitorProductTargetsUseCase,
+            MonitorProductTargetsUseCase>();
 
         return services;
     }
