@@ -26,6 +26,9 @@ public sealed class AutoBuyerDbContext
     public DbSet<StoreMonitoringState> StoreMonitoringStates =>
         Set<StoreMonitoringState>();
 
+    public DbSet<PromotionCandidate> PromotionCandidates =>
+        Set<PromotionCandidate>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

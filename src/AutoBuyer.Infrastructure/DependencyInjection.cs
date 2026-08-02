@@ -70,6 +70,10 @@ public static class DependencyInjection
             IStoreMonitoringStateRepository,
             StoreMonitoringStateRepository>();
 
+        services.AddScoped<
+            IPromotionCandidateRepository,
+            PromotionCandidateRepository>();
+
         services.Configure<TelegramOptions>(
             configuration.GetSection(TelegramOptions.SectionName));
 
