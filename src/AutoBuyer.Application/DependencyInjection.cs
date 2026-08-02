@@ -7,6 +7,9 @@ using AutoBuyer.Application.UseCases.ProductTargets.Delete;
 using AutoBuyer.Application.UseCases.ProductTargets.GetAll;
 using AutoBuyer.Application.UseCases.ProductTargets.GetById;
 using AutoBuyer.Application.UseCases.ProductTargets.Update;
+using AutoBuyer.Application.UseCases.Promotions.CreateProductTarget;
+using AutoBuyer.Application.UseCases.Promotions.GetAll;
+using AutoBuyer.Application.UseCases.Promotions.Ignore;
 using AutoBuyer.Application.UseCases.Promotions.ImportMessage;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -60,6 +63,18 @@ public static class DependencyInjection
         services.AddScoped<
             IImportPromotionMessageUseCase,
             ImportPromotionMessageUseCase>();
+
+        services.AddScoped<
+            IGetAllPromotionCandidatesUseCase,
+            GetAllPromotionCandidatesUseCase>();
+
+        services.AddScoped<
+            ICreateProductTargetFromPromotionUseCase,
+            CreateProductTargetFromPromotionUseCase>();
+
+        services.AddScoped<
+            IIgnorePromotionCandidateUseCase,
+            IgnorePromotionCandidateUseCase>();
 
         return services;
     }

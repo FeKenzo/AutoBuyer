@@ -1,6 +1,32 @@
-@AutoBuyer.Api_HostAddress = http://localhost:5294
+@AutoBuyer_Api_HostAddress = http://localhost:57626
 
-GET {{AutoBuyer.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Listar todas as promoções
 
-###
+GET {{AutoBuyer_Api_HostAddress}}/api/promotions
+
+### Listar promoções pendentes
+
+GET {{AutoBuyer_Api_HostAddress}}/api/promotions?status=pending
+
+### Listar promoções que precisam de revisão
+
+GET {{AutoBuyer_Api_HostAddress}}/api/promotions?status=NeedsReview
+
+
+### Listar promoções ignoradas 
+GET {{AutoBuyer_Api_HostAddress}}/api/promotions?status=ignored
+
+### Converter promoção em monitoramento
+
+POST {{AutoBuyer_Api_HostAddress}}/api/promotions/e80a57d2-1728-4987-9607-8e025044a2e1/product-target
+Content-Type: application/json
+{
+  "storeId": "11111111-1111-1111-1111-111111111111",
+  "targetPrice": 248.00,
+  "productUrl": "https://s.click.aliexpress.com/e/_c405rN6T",
+  "autoBuyEnabled": false
+}
+
+### Testar Ignorar
+
+PATCH {{AutoBuyer_Api_HostAddress}}/api/promotions/e80a57d2-1728-4987-9607-8e025044a2e1/ignore

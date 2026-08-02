@@ -1,5 +1,6 @@
 using AutoBuyer.Application;
 using AutoBuyer.Infrastructure;
+using System.Text.Json.Serialization;
 
 namespace AutoBuyer.Api;
 
@@ -9,7 +10,13 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddControllers();
+        builder.Services
+            .AddControllers()
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(
+                    new JsonStringEnumConverter());
+            });
         builder.Services.AddOpenApi();
 
         builder.Services.AddApplication();
