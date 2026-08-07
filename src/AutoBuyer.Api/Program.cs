@@ -1,5 +1,6 @@
 using AutoBuyer.Application;
 using AutoBuyer.Infrastructure;
+using System.Text.Json.Serialization;
 
 namespace AutoBuyer.Api;
 
@@ -9,13 +10,28 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddControllers();
+        builder.Services
+            .AddControllers()
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(
+                    new JsonStringEnumConverter());
+            });
         builder.Services.AddOpenApi();
 
         builder.Services.AddApplication();
         builder.Services.AddInfrastructure(
             builder.Configuration);
-
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("Frontend", policy =>
+            {
+                policy
+                    .WithOrigins("http://localhost:4200")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
         var app = builder.Build();
 
         if (app.Environment.IsDevelopment())
@@ -24,6 +40,8 @@ public class Program
         }
 
         app.UseHttpsRedirection();
+
+        app.UseCors("Frontend");
 
         app.UseAuthorization();
 

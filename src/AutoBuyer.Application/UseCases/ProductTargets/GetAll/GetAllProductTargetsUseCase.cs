@@ -17,16 +17,22 @@ public sealed class GetAllProductTargetsUseCase
     public async Task<IReadOnlyList<ProductTargetResponse>> ExecuteAsync(
         CancellationToken cancellationToken)
     {
-        var targets = await _repository.GetAllAsync(cancellationToken);
+        var targets =
+            await _repository.GetAllWithLatestPriceAsync(
+                cancellationToken);
 
         return targets
             .Select(target => new ProductTargetResponse(
                 target.Id,
                 target.StoreId,
-                target.Store?.Name ?? string.Empty,
+                target.StoreName,
                 target.Name,
                 target.ProductUrl,
                 target.TargetPrice,
+                target.CurrentPrice,
+                target.CurrentPrice.HasValue &&
+                target.CurrentPrice.Value <= target.TargetPrice,
+                target.LastCapturedAt,
                 target.AutoBuyEnabled,
                 target.MonitoringEnabled,
                 target.CreatedAt))

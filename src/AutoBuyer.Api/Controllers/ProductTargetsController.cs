@@ -4,6 +4,9 @@ using AutoBuyer.Application.UseCases.ProductTargets.Create;
 using AutoBuyer.Application.UseCases.ProductTargets.GetAll;
 using AutoBuyer.Application.UseCases.ProductTargets.GetById;
 using Microsoft.AspNetCore.Mvc;
+using AutoBuyer.Application.UseCases.ProductTargets.ChangeMonitoringStatus;
+using AutoBuyer.Application.UseCases.ProductTargets.Delete;
+using AutoBuyer.Application.UseCases.ProductTargets.Update;
 
 namespace AutoBuyer.Api.Controllers;
 
@@ -86,5 +89,73 @@ public sealed class ProductTargetsController : ControllerBase
         return result is null
             ? NotFound()
             : Ok(result);
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(
+    typeof(ProductTargetResponse),
+    StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(
+    Guid id,
+    [FromBody] UpdateProductTargetRequest request,
+    [FromServices] IUpdateProductTargetUseCase useCase,
+    CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await useCase.ExecuteAsync(
+                id,
+                request,
+                cancellationToken);
+
+            return result is null
+                ? NotFound()
+                : Ok(result);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new
+            {
+                error = exception.Message
+            });
+        }
+    }
+
+    [HttpPatch("{id:guid}/monitoring")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ChangeMonitoringStatus(
+        Guid id,
+        [FromBody] ChangeMonitoringStatusRequest request,
+        [FromServices] IChangeMonitoringStatusUseCase useCase,
+        CancellationToken cancellationToken)
+    {
+        var updated = await useCase.ExecuteAsync(
+            id,
+            request.Enabled,
+            cancellationToken);
+
+        return updated
+            ? NoContent()
+            : NotFound();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(
+        Guid id,
+        [FromServices] IDeleteProductTargetUseCase useCase,
+        CancellationToken cancellationToken)
+    {
+        var deleted = await useCase.ExecuteAsync(
+            id,
+            cancellationToken);
+
+        return deleted
+            ? NoContent()
+            : NotFound();
     }
 }

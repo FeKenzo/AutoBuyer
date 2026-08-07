@@ -1,14 +1,14 @@
-namespace AutoBuyer.Worker
-{
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            var builder = Host.CreateApplicationBuilder(args);
-            builder.Services.AddHostedService<Worker>();
+using AutoBuyer.Application;
+using AutoBuyer.Infrastructure;
+using AutoBuyer.Worker;
 
-            var host = builder.Build();
-            host.Run();
-        }
-    }
-}
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddHostedService<Worker>();
+
+var host = builder.Build();
+
+host.Run();

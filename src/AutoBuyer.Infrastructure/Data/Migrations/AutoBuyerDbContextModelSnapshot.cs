@@ -22,6 +22,34 @@ namespace AutoBuyer.Infrastructure.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("AutoBuyer.Domain.Entities.PriceHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CapturedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("ProductTargetId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductTargetId");
+
+                    b.HasIndex("ProductTargetId", "CapturedAt");
+
+                    b.ToTable("price_history", (string)null);
+                });
+
             modelBuilder.Entity("AutoBuyer.Domain.Entities.ProductTarget", b =>
                 {
                     b.Property<Guid>("Id")
@@ -63,6 +91,82 @@ namespace AutoBuyer.Infrastructure.Data.Migrations
                     b.ToTable("product_targets", (string)null);
                 });
 
+            modelBuilder.Entity("AutoBuyer.Domain.Entities.PromotionCandidate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AdvertisedPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Conditions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Coupon")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("OriginalMessage")
+                        .IsRequired()
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)");
+
+                    b.Property<string>("OriginalUrl")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("ProductTargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResolvedUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("StoreId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("TelegramChatId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("TelegramMessageId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductTargetId");
+
+                    b.HasIndex("ReceivedAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("TelegramChatId", "TelegramMessageId")
+                        .IsUnique();
+
+                    b.ToTable("promotion_candidates", (string)null);
+                });
+
             modelBuilder.Entity("AutoBuyer.Domain.Entities.Store", b =>
                 {
                     b.Property<Guid>("Id")
@@ -93,6 +197,56 @@ namespace AutoBuyer.Infrastructure.Data.Migrations
                     b.ToTable("stores", (string)null);
                 });
 
+            modelBuilder.Entity("AutoBuyer.Domain.Entities.StoreMonitoringState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ConsecutiveFailures")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Host")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("LastFailureAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LastHttpStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LastSuccessAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("NextAllowedAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Host")
+                        .IsUnique();
+
+                    b.HasIndex("NextAllowedAttemptAt");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("store_monitoring_states", (string)null);
+                });
+
             modelBuilder.Entity("AutoBuyer.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -104,6 +258,17 @@ namespace AutoBuyer.Infrastructure.Data.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("AutoBuyer.Domain.Entities.PriceHistory", b =>
+                {
+                    b.HasOne("AutoBuyer.Domain.Entities.ProductTarget", "ProductTarget")
+                        .WithMany()
+                        .HasForeignKey("ProductTargetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProductTarget");
+                });
+
             modelBuilder.Entity("AutoBuyer.Domain.Entities.ProductTarget", b =>
                 {
                     b.HasOne("AutoBuyer.Domain.Entities.Store", "Store")
@@ -111,6 +276,23 @@ namespace AutoBuyer.Infrastructure.Data.Migrations
                         .HasForeignKey("StoreId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("AutoBuyer.Domain.Entities.PromotionCandidate", b =>
+                {
+                    b.HasOne("AutoBuyer.Domain.Entities.ProductTarget", "ProductTarget")
+                        .WithMany()
+                        .HasForeignKey("ProductTargetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("AutoBuyer.Domain.Entities.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ProductTarget");
 
                     b.Navigation("Store");
                 });

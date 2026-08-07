@@ -2,6 +2,7 @@
 using AutoBuyer.Domain.Entities;
 using AutoBuyer.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using AutoBuyer.Application.Abstractions.Persistence.Models;
 
 namespace AutoBuyer.Infrastructure.Repositories;
 
@@ -45,5 +46,103 @@ public sealed class ProductTargetRepository
             .Include(target => target.Store)
             .OrderByDescending(target => target.CreatedAt)
             .ToListAsync(cancellationToken);
+    }
+    public async Task<IReadOnlyList<ProductTarget>>
+    GetMonitoringEnabledAsync(
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.ProductTargets
+            .AsNoTracking()
+            .Where(target => target.MonitoringEnabled)
+            .Where(target =>
+                target.Store != null &&
+                target.Store.IsEnabled)
+            .Include(target => target.Store)
+            .OrderBy(target => target.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ProductTargetWithLatestPrice>>
+    GetAllWithLatestPriceAsync(
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.ProductTargets
+            .AsNoTracking()
+            .OrderByDescending(target => target.CreatedAt)
+            .Select(target => new ProductTargetWithLatestPrice(
+                target.Id,
+                target.StoreId,
+                target.Store != null
+                    ? target.Store.Name
+                    : string.Empty,
+                target.Name,
+                target.ProductUrl,
+                target.TargetPrice,
+                target.AutoBuyEnabled,
+                target.MonitoringEnabled,
+                target.CreatedAt,
+                _dbContext.PriceHistory
+                    .Where(history =>
+                        history.ProductTargetId == target.Id)
+                    .OrderByDescending(history => history.CapturedAt)
+                    .Select(history => (decimal?)history.Price)
+                    .FirstOrDefault(),
+                _dbContext.PriceHistory
+                    .Where(history =>
+                        history.ProductTargetId == target.Id)
+                    .OrderByDescending(history => history.CapturedAt)
+                    .Select(history => (DateTime?)history.CapturedAt)
+                    .FirstOrDefault()))
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<ProductTargetWithLatestPrice?>
+        GetByIdWithLatestPriceAsync(
+            Guid id,
+            CancellationToken cancellationToken)
+    {
+        return _dbContext.ProductTargets
+            .AsNoTracking()
+            .Where(target => target.Id == id)
+            .Select(target => new ProductTargetWithLatestPrice(
+                target.Id,
+                target.StoreId,
+                target.Store != null
+                    ? target.Store.Name
+                    : string.Empty,
+                target.Name,
+                target.ProductUrl,
+                target.TargetPrice,
+                target.AutoBuyEnabled,
+                target.MonitoringEnabled,
+                target.CreatedAt,
+                _dbContext.PriceHistory
+                    .Where(history =>
+                        history.ProductTargetId == target.Id)
+                    .OrderByDescending(history => history.CapturedAt)
+                    .Select(history => (decimal?)history.Price)
+                    .FirstOrDefault(),
+                _dbContext.PriceHistory
+                    .Where(history =>
+                        history.ProductTargetId == target.Id)
+                    .OrderByDescending(history => history.CapturedAt)
+                    .Select(history => (DateTime?)history.CapturedAt)
+                    .FirstOrDefault()))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public Task<ProductTarget?> GetTrackedByIdAsync(
+    Guid id,
+    CancellationToken cancellationToken)
+    {
+        return _dbContext.ProductTargets
+            .FirstOrDefaultAsync(
+                target => target.Id == id,
+                cancellationToken);
+    }
+
+    public void Remove(ProductTarget productTarget)
+    {
+        _dbContext.ProductTargets.Remove(productTarget);
     }
 }

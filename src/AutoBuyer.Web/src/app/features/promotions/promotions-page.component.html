@@ -1,0 +1,294 @@
+<main class="page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">
+        AutoBuyer
+      </span>
+
+      <h1>Promoções recebidas</h1>
+
+      <p>
+        Revise mensagens importadas e transforme oportunidades
+        em monitoramentos de preço.
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <span class="pending-counter">
+        {{ pendingCount() }} para revisar
+      </span>
+
+      <button
+        type="button"
+        class="button button--secondary"
+        [disabled]="loading()"
+        (click)="loadPromotions()">
+        Atualizar
+      </button>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="alert alert--error">
+      {{ error() }}
+    </div>
+  }
+
+  @if (successMessage()) {
+    <div class="alert alert--success">
+      {{ successMessage() }}
+    </div>
+  }
+
+  <section class="filters">
+    @for (status of statuses; track status.label) {
+      <button
+        type="button"
+        class="filter-button"
+        [class.filter-button--active]="
+          selectedStatus() === status.value
+        "
+        (click)="changeStatusFilter(status.value)">
+        {{ status.label }}
+      </button>
+    }
+  </section>
+
+  @if (loading()) {
+    <section class="empty-state">
+      Carregando promoções...
+    </section>
+  } @else if (promotions().length === 0) {
+    <section class="empty-state">
+      Nenhuma promoção encontrada para esse filtro.
+    </section>
+  } @else {
+    <section class="promotion-grid">
+      @for (
+        promotion of promotions();
+        track promotion.id
+      ) {
+        <article
+          class="promotion-card"
+          [class.promotion-card--review]="
+            promotion.status === 'NeedsReview'
+          "
+          [class.promotion-card--imported]="
+            promotion.status === 'Imported'
+          ">
+
+          <header class="promotion-card__header">
+            <div>
+              <span class="telegram-reference">
+                Telegram:
+                {{ promotion.telegramChatId }}
+                /
+                {{ promotion.telegramMessageId }}
+              </span>
+
+              <h2>
+                {{ promotion.productName }}
+              </h2>
+            </div>
+
+            <span
+              class="status"
+              [attr.data-status]="promotion.status">
+              {{ getStatusLabel(promotion.status) }}
+            </span>
+          </header>
+
+          <div class="price">
+            <span>Preço anunciado</span>
+
+            <strong>
+              {{
+                formatCurrency(
+                  promotion.advertisedPrice
+                )
+              }}
+            </strong>
+          </div>
+
+          @if (promotion.storeName) {
+            <div class="information">
+              <strong>Loja:</strong>
+              {{ promotion.storeName }}
+            </div>
+          }
+
+          @if (promotion.coupon) {
+            <div class="condition-box">
+              <strong>Cupom</strong>
+              <span>{{ promotion.coupon }}</span>
+            </div>
+          }
+
+          @if (promotion.conditions) {
+            <div class="condition-box">
+              <strong>Condições da oferta</strong>
+              <span>{{ promotion.conditions }}</span>
+            </div>
+          }
+
+          <div class="information">
+            <strong>Recebida em:</strong>
+
+            {{
+              promotion.receivedAt
+                | date:'dd/MM/yyyy HH:mm'
+            }}
+          </div>
+
+          <footer class="promotion-card__actions">
+            <a
+              class="button button--secondary"
+              [href]="
+                promotion.resolvedUrl
+                ?? promotion.originalUrl
+              "
+              target="_blank"
+              rel="noopener noreferrer">
+              Abrir anúncio
+            </a>
+
+            @if (canReview(promotion)) {
+              <button
+                type="button"
+                class="button"
+                (click)="openConversion(promotion)">
+                Criar monitoramento
+              </button>
+
+              <button
+                type="button"
+                class="button button--danger"
+                (click)="ignorePromotion(promotion)">
+                Ignorar
+              </button>
+            }
+          </footer>
+        </article>
+      }
+    </section>
+  }
+
+  @if (selectedPromotion(); as promotion) {
+    <div
+      class="modal-backdrop"
+      (click)="closeConversion()">
+
+      <section
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="conversion-title"
+        (click)="$event.stopPropagation()">
+
+        <header class="modal__header">
+          <div>
+            <span class="eyebrow">
+              Criar monitoramento
+            </span>
+
+            <h2 id="conversion-title">
+              {{ promotion.productName }}
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            class="close-button"
+            aria-label="Fechar"
+            (click)="closeConversion()">
+            ×
+          </button>
+        </header>
+
+        @if (promotion.coupon) {
+          <div class="modal-warning">
+            Esta promoção utiliza o cupom
+            <strong>{{ promotion.coupon }}</strong>.
+            O Worker pode observar um preço diferente do
+            preço anunciado.
+          </div>
+        }
+
+        @if (promotion.conditions) {
+          <div class="modal-warning">
+            <strong>Condições:</strong>
+            {{ promotion.conditions }}
+          </div>
+        }
+
+        <form
+          class="conversion-form"
+          [formGroup]="conversionForm"
+          (ngSubmit)="convertPromotion()">
+
+          <label>
+            Loja
+
+            <select formControlName="storeId">
+              <option value="">
+                Selecione uma loja
+              </option>
+
+              @for (store of stores; track store.id) {
+                <option [value]="store.id">
+                  {{ store.name }}
+                </option>
+              }
+            </select>
+          </label>
+
+          <label>
+            Preço-alvo
+
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              formControlName="targetPrice">
+          </label>
+
+          <label class="form-wide">
+            URL do produto
+
+            <input
+              type="url"
+              formControlName="productUrl">
+          </label>
+
+          <label class="checkbox form-wide">
+            <input
+              type="checkbox"
+              formControlName="autoBuyEnabled">
+
+            Habilitar compra automática futuramente
+          </label>
+
+          <footer class="modal__actions">
+            <button
+              type="button"
+              class="button button--secondary"
+              (click)="closeConversion()">
+              Cancelar
+            </button>
+
+            <button
+              type="submit"
+              class="button"
+              [disabled]="submitting()">
+              {{
+                submitting()
+                  ? 'Criando...'
+                  : 'Criar monitoramento'
+              }}
+            </button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  }
+</main>

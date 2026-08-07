@@ -18,7 +18,16 @@ public sealed class AutoBuyerDbContext
     public DbSet<ProductTarget> ProductTargets =>
         Set<ProductTarget>();
 
+    public DbSet<PriceHistory> PriceHistory =>
+        Set<PriceHistory>();
+
     public DbSet<User> Users => Set<User>();
+
+    public DbSet<StoreMonitoringState> StoreMonitoringStates =>
+        Set<StoreMonitoringState>();
+
+    public DbSet<PromotionCandidate> PromotionCandidates =>
+        Set<PromotionCandidate>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

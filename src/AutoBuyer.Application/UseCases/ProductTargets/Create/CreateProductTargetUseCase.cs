@@ -54,8 +54,8 @@ public sealed class CreateProductTargetUseCase
     }
 
     private static ProductTargetResponse Map(
-        ProductTarget productTarget,
-        string storeName)
+    ProductTarget productTarget,
+    string storeName)
     {
         return new ProductTargetResponse(
             productTarget.Id,
@@ -64,6 +64,9 @@ public sealed class CreateProductTargetUseCase
             productTarget.Name,
             productTarget.ProductUrl,
             productTarget.TargetPrice,
+            null,
+            false,
+            null,
             productTarget.AutoBuyEnabled,
             productTarget.MonitoringEnabled,
             productTarget.CreatedAt);
