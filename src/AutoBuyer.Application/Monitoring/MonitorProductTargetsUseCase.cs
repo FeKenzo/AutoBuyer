@@ -142,12 +142,23 @@ public sealed class MonitorProductTargetsUseCase
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 
+        if (!target.TargetPrice.HasValue)
+        {
+            _logger.LogInformation(
+                "Preço capturado para {ProductName}, ainda sem preço-alvo definido.",
+                target.Name);
+
+            return;
+        }
+
+        var targetPrice = target.TargetPrice.Value;
+
         var targetReached =
-            currentPrice <= target.TargetPrice;
+            currentPrice <= targetPrice;
 
         var targetWasReachedPreviously =
             previousPriceHistory is not null &&
-            previousPriceHistory.Price <= target.TargetPrice;
+            previousPriceHistory.Price <= targetPrice;
 
         var crossedTarget =
             targetReached &&
@@ -159,7 +170,7 @@ public sealed class MonitorProductTargetsUseCase
                 "Preço capturado. Produto: {ProductName}. Atual: {CurrentPrice}. Alvo: {TargetPrice}",
                 target.Name,
                 currentPrice,
-                target.TargetPrice);
+                targetPrice);
 
             return;
         }
@@ -168,7 +179,7 @@ public sealed class MonitorProductTargetsUseCase
             "Preço-alvo atingido. Produto: {ProductName}. Atual: {CurrentPrice}. Alvo: {TargetPrice}",
             target.Name,
             currentPrice,
-            target.TargetPrice);
+            targetPrice);
 
         if (!crossedTarget)
         {
@@ -185,7 +196,7 @@ public sealed class MonitorProductTargetsUseCase
             target.Store?.Name ?? "Loja não identificada",
             target.ProductUrl,
             currentPrice,
-            target.TargetPrice,
+            targetPrice,
             capturedAt);
 
         try

@@ -32,13 +32,18 @@ public sealed class GetProductTargetByIdUseCase
             target.StoreName,
             target.Name,
             target.ProductUrl,
+            target.ExternalProductId,
             target.TargetPrice,
+            target.LastObservedPrice,
+            target.LastSeenAt,
             target.CurrentPrice,
+            target.TargetPrice.HasValue &&
             target.CurrentPrice.HasValue &&
-            target.CurrentPrice.Value <= target.TargetPrice,
+            target.CurrentPrice.Value <= target.TargetPrice.Value,
             target.LastCapturedAt,
             target.AutoBuyEnabled,
             target.MonitoringEnabled,
-            target.CreatedAt);
+            target.CreatedAt,
+            target.UpdatedAt);
     }
 }

@@ -1,10 +1,12 @@
 ﻿using AutoBuyer.Application.Abstractions.Persistence;
 using AutoBuyer.Application.Monitoring;
 using AutoBuyer.Application.Notifications;
+using AutoBuyer.Application.Promotions.Resolution;
 using AutoBuyer.Infrastructure.Data;
 using AutoBuyer.Infrastructure.Monitoring;
 using AutoBuyer.Infrastructure.Monitoring.Extractors;
 using AutoBuyer.Infrastructure.Notifications;
+using AutoBuyer.Infrastructure.Promotions;
 using AutoBuyer.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -63,16 +65,27 @@ public static class DependencyInjection
         services.AddScoped<StorePriceExtractorResolver>();
 
         services.AddScoped<
-            IProductPriceReader,
-            PlaywrightProductPriceReader>();
-
-        services.AddScoped<
             IStoreMonitoringStateRepository,
             StoreMonitoringStateRepository>();
 
         services.AddScoped<
             IPromotionCandidateRepository,
             PromotionCandidateRepository>();
+
+        services.AddHttpClient<
+                IPromotionUrlResolver,
+                HttpPromotionUrlResolver>(client =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(15);
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                        "AutoBuyer/1.0 (+price-monitoring)");
+                })
+            .ConfigurePrimaryHttpMessageHandler(() =>
+                new HttpClientHandler
+                {
+                    AllowAutoRedirect = true,
+                    MaxAutomaticRedirections = 10
+                });
 
         services.Configure<TelegramOptions>(
             configuration.GetSection(TelegramOptions.SectionName));

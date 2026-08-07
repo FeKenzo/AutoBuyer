@@ -3,4 +3,5 @@
 public sealed record ImportPromotionMessageRequest(
     long TelegramChatId,
     int TelegramMessageId,
-    string Message);
+    string Message,
+    bool IsEdited = false);

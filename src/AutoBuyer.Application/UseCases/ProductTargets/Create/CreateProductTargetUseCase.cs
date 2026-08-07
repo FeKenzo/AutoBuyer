@@ -63,12 +63,16 @@ public sealed class CreateProductTargetUseCase
             storeName,
             productTarget.Name,
             productTarget.ProductUrl,
+            productTarget.ExternalProductId,
             productTarget.TargetPrice,
+            productTarget.LastObservedPrice,
+            productTarget.LastSeenAt,
             null,
             false,
             null,
             productTarget.AutoBuyEnabled,
             productTarget.MonitoringEnabled,
-            productTarget.CreatedAt);
+            productTarget.CreatedAt,
+            productTarget.UpdatedAt);
     }
 }

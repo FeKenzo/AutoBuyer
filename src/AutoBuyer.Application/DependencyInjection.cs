@@ -1,5 +1,6 @@
 ﻿using AutoBuyer.Application.Monitoring;
 using AutoBuyer.Application.Promotions.Parsing;
+using AutoBuyer.Application.Promotions.Resolution;
 using AutoBuyer.Application.UseCases.Monitoring;
 using AutoBuyer.Application.UseCases.ProductTargets.ChangeMonitoringStatus;
 using AutoBuyer.Application.UseCases.ProductTargets.Create;
@@ -56,9 +57,13 @@ public static class DependencyInjection
             IPromotionMessageParser,
             TelegramPromotionParser>();
 
-        services.AddScoped<
-            IPromotionMessageParser,
-            TelegramPromotionParser>();
+        services.AddSingleton<
+            IStoreResolver,
+            StoreResolver>();
+
+        services.AddSingleton<
+            IProductIdentityResolver,
+            ProductIdentityResolver>();
 
         services.AddScoped<
             IImportPromotionMessageUseCase,

@@ -17,6 +17,9 @@ public sealed class PromotionsController : ControllerBase
     [ProducesResponseType(
         typeof(PromotionCandidateResponse),
         StatusCodes.Status201Created)]
+    [ProducesResponseType(
+        typeof(PromotionCandidateResponse),
+        StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ImportMessage(
@@ -42,9 +45,11 @@ public sealed class PromotionsController : ControllerBase
             });
         }
 
-        return StatusCode(
-            StatusCodes.Status201Created,
-            result.Promotion);
+        return result.IsUpdate
+            ? Ok(result.Promotion)
+            : StatusCode(
+                StatusCodes.Status201Created,
+                result.Promotion);
     }
 
     [HttpGet]

@@ -15,7 +15,7 @@ public sealed class ProductTargetConfiguration
         builder.HasKey(target => target.Id);
 
         builder.Property(target => target.Name)
-            .HasMaxLength(250)
+            .HasMaxLength(300)
             .IsRequired();
 
         builder.Property(target => target.ProductUrl)
@@ -23,7 +23,17 @@ public sealed class ProductTargetConfiguration
             .IsRequired();
 
         builder.Property(target => target.TargetPrice)
-            .HasPrecision(18, 2)
+            .HasPrecision(18, 2);
+
+        builder.Property(target => target.ExternalProductId)
+            .HasMaxLength(200);
+
+        builder.Property(target => target.LastObservedPrice)
+            .HasPrecision(18, 2);
+
+        builder.Property(target => target.LastSeenAt);
+
+        builder.Property(target => target.UpdatedAt)
             .IsRequired();
 
         builder.Property(target => target.AutoBuyEnabled)
@@ -41,6 +51,13 @@ public sealed class ProductTargetConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(target => target.StoreId);
+
+        builder.HasIndex(target => new
+        {
+            target.StoreId,
+            target.ExternalProductId
+        })
+        .IsUnique();
 
         builder.HasIndex(target => target.MonitoringEnabled);
     }
