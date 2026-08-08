@@ -9,6 +9,7 @@ public sealed class PromotionCandidate : Entity
     private const int MaximumCouponLength = 500;
     private const int MaximumConditionsLength = 2_000;
     private const int MaximumOriginalMessageLength = 10_000;
+    private const int MaximumReviewReasonLength = 1_000;
 
     private PromotionCandidate()
     {
@@ -76,6 +77,8 @@ public sealed class PromotionCandidate : Entity
 
     public PromotionCandidateStatus Status { get; private set; }
 
+    public string? ReviewReason { get; private set; }
+
     public Guid? ProductTargetId { get; private set; }
 
     public ProductTarget? ProductTarget { get; private set; }
@@ -83,6 +86,8 @@ public sealed class PromotionCandidate : Entity
     public DateTime ReceivedAt { get; private set; }
 
     public DateTime? ProcessedAt { get; private set; }
+
+    public DateTime? UpdatedAt { get; private set; }
 
     public void AssignStore(Store store)
     {
@@ -110,19 +115,47 @@ public sealed class PromotionCandidate : Entity
             MaximumUrlLength);
     }
 
-    public void MarkAsNeedsReview()
+    public void UpdateFromTelegramMessage(
+        string productName,
+        decimal advertisedPrice,
+        string originalUrl,
+        string originalMessage,
+        string? coupon,
+        string? conditions)
     {
-        EnsurePending();
+        SetProductName(productName);
+        SetAdvertisedPrice(advertisedPrice);
+        SetOriginalUrl(originalUrl);
+        SetOriginalMessage(originalMessage);
+        SetCoupon(coupon);
+        SetConditions(conditions);
 
+        Store = null;
+        StoreId = null;
+        ResolvedUrl = null;
+        ProductTarget = null;
+        ProductTargetId = null;
+        Status = PromotionCandidateStatus.Pending;
+        ReviewReason = null;
+        ProcessedAt = null;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkAsNeedsReview(string? reason = null)
+    {
         Status = PromotionCandidateStatus.NeedsReview;
+        ReviewReason = LimitOptional(
+            reason,
+            MaximumReviewReasonLength);
         ProcessedAt = DateTime.UtcNow;
     }
 
-    public void MarkAsUnsupportedStore()
+    public void MarkAsUnsupportedStore(string? reason = null)
     {
-        EnsurePending();
-
         Status = PromotionCandidateStatus.UnsupportedStore;
+        ReviewReason = LimitOptional(
+            reason,
+            MaximumReviewReasonLength);
         ProcessedAt = DateTime.UtcNow;
     }
 
@@ -142,15 +175,10 @@ public sealed class PromotionCandidate : Entity
     {
         ArgumentNullException.ThrowIfNull(productTarget);
 
-        if (Status == PromotionCandidateStatus.Imported)
-        {
-            throw new InvalidOperationException(
-                "A promoção já foi importada.");
-        }
-
         ProductTarget = productTarget;
         ProductTargetId = productTarget.Id;
         Status = PromotionCandidateStatus.Imported;
+        ReviewReason = null;
         ProcessedAt = DateTime.UtcNow;
     }
 
@@ -226,15 +254,6 @@ public sealed class PromotionCandidate : Entity
             : Limit(conditions.Trim(), MaximumConditionsLength);
     }
 
-    private void EnsurePending()
-    {
-        if (Status != PromotionCandidateStatus.Pending)
-        {
-            throw new InvalidOperationException(
-                "Somente promoções pendentes podem receber esse status.");
-        }
-    }
-
     private static string Limit(
         string value,
         int maximumLength)
@@ -242,5 +261,14 @@ public sealed class PromotionCandidate : Entity
         return value.Length <= maximumLength
             ? value
             : value[..maximumLength];
+    }
+
+    private static string? LimitOptional(
+        string? value,
+        int maximumLength)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : Limit(value.Trim(), maximumLength);
     }
 }

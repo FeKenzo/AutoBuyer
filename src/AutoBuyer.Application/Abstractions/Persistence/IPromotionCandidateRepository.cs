@@ -9,7 +9,7 @@ public interface IPromotionCandidateRepository
         PromotionCandidate candidate,
         CancellationToken cancellationToken);
 
-    Task<bool> ExistsAsync(
+    Task<PromotionCandidate?> GetByTelegramSourceAsync(
         long telegramChatId,
         int telegramMessageId,
         CancellationToken cancellationToken);

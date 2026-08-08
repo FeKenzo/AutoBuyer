@@ -62,13 +62,24 @@ namespace AutoBuyer.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ExternalProductId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("LastObservedPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("MonitoringEnabled")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("character varying(250)");
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("ProductUrl")
                         .IsRequired()
@@ -78,15 +89,21 @@ namespace AutoBuyer.Infrastructure.Data.Migrations
                     b.Property<Guid>("StoreId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("TargetPrice")
+                    b.Property<decimal?>("TargetPrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("MonitoringEnabled");
 
                     b.HasIndex("StoreId");
+
+                    b.HasIndex("StoreId", "ExternalProductId")
+                        .IsUnique();
 
                     b.ToTable("product_targets", (string)null);
                 });
@@ -133,6 +150,10 @@ namespace AutoBuyer.Infrastructure.Data.Migrations
                     b.Property<DateTime>("ReceivedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ReviewReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<string>("ResolvedUrl")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -150,6 +171,9 @@ namespace AutoBuyer.Infrastructure.Data.Migrations
 
                     b.Property<int>("TelegramMessageId")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -190,6 +214,8 @@ namespace AutoBuyer.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BaseUrl");
 
                     b.HasIndex("Name")
                         .IsUnique();

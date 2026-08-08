@@ -53,6 +53,11 @@ public sealed class PromotionCandidateConfiguration
         builder.Property(candidate => candidate.ReceivedAt)
             .IsRequired();
 
+        builder.Property(candidate => candidate.ReviewReason)
+            .HasMaxLength(1_000);
+
+        builder.Property(candidate => candidate.UpdatedAt);
+
         builder.HasIndex(candidate => new
         {
             candidate.TelegramChatId,

@@ -24,6 +24,8 @@ public sealed class StoreConfiguration
             .HasMaxLength(500)
             .IsRequired();
 
+        builder.HasIndex(store => store.BaseUrl);
+
         builder.Property(store => store.IsEnabled)
             .IsRequired();
 

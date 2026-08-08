@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34309.116
@@ -14,6 +14,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoBuyer.Shared", "src\AutoBuyer.Shared\AutoBuyer.Shared.csproj", "{37F40B8B-2940-4797-AE01-77AAED2B1A12}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoBuyer.Worker", "src\AutoBuyer.Worker\AutoBuyer.Worker.csproj", "{BC2C08D3-286F-4257-A211-C87DCAA4657B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoBuyer.TelegramIngestion.Worker", "src\AutoBuyer.TelegramIngestion.Worker\AutoBuyer.TelegramIngestion.Worker.csproj", "{B78F352E-9740-4C69-A9EB-9FB07B38D007}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoBuyer.Application.Tests", "tests\AutoBuyer.Application.Tests\AutoBuyer.Application.Tests.csproj", "{B78F352E-9740-4C69-A9EB-9FB07B38D008}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 EndProject
@@ -49,6 +53,14 @@ Global
 		{BC2C08D3-286F-4257-A211-C87DCAA4657B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BC2C08D3-286F-4257-A211-C87DCAA4657B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BC2C08D3-286F-4257-A211-C87DCAA4657B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B78F352E-9740-4C69-A9EB-9FB07B38D007}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B78F352E-9740-4C69-A9EB-9FB07B38D007}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B78F352E-9740-4C69-A9EB-9FB07B38D007}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B78F352E-9740-4C69-A9EB-9FB07B38D007}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B78F352E-9740-4C69-A9EB-9FB07B38D008}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B78F352E-9740-4C69-A9EB-9FB07B38D008}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B78F352E-9740-4C69-A9EB-9FB07B38D008}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B78F352E-9740-4C69-A9EB-9FB07B38D008}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -60,6 +72,8 @@ Global
 		{593C7584-559E-4A25-9FAE-8FE6CC4DA813} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{37F40B8B-2940-4797-AE01-77AAED2B1A12} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{BC2C08D3-286F-4257-A211-C87DCAA4657B} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{B78F352E-9740-4C69-A9EB-9FB07B38D007} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{B78F352E-9740-4C69-A9EB-9FB07B38D008} = {E93147A9-439B-446E-8AD8-8598BC3376D9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C250DF2C-D959-4A60-8D5B-CD7B361F2B8D}

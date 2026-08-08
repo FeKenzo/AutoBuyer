@@ -1,4 +1,4 @@
-﻿namespace AutoBuyer.Application.Contracts.Responses.ProductTargets;
+namespace AutoBuyer.Application.Contracts.Responses.ProductTargets;
 
 public sealed record ProductTargetResponse(
     Guid Id,
@@ -6,10 +6,14 @@ public sealed record ProductTargetResponse(
     string StoreName,
     string Name,
     string ProductUrl,
-    decimal TargetPrice,
+    string? ExternalProductId,
+    decimal? TargetPrice,
+    decimal? LastObservedPrice,
+    DateTime? LastSeenAt,
     decimal? CurrentPrice,
     bool TargetReached,
     DateTime? LastCapturedAt,
     bool AutoBuyEnabled,
     bool MonitoringEnabled,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    DateTime UpdatedAt);

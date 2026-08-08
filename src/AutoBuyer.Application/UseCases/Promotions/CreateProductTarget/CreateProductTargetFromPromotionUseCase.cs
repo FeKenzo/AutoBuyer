@@ -1,7 +1,8 @@
-﻿using AutoBuyer.Application.Abstractions.Persistence;
+using AutoBuyer.Application.Abstractions.Persistence;
 using AutoBuyer.Application.Contracts.Requests.Promotions;
 using AutoBuyer.Application.Contracts.Responses.ProductTargets;
 using AutoBuyer.Application.Contracts.Responses.Promotions;
+using AutoBuyer.Application.Promotions.Resolution;
 using AutoBuyer.Domain.Entities;
 using AutoBuyer.Domain.Enums;
 
@@ -13,17 +14,23 @@ public sealed class CreateProductTargetFromPromotionUseCase
     private readonly IPromotionCandidateRepository _promotionRepository;
     private readonly IProductTargetRepository _productTargetRepository;
     private readonly IStoreRepository _storeRepository;
+    private readonly IStoreResolver _storeResolver;
+    private readonly IProductIdentityResolver _identityResolver;
     private readonly IUnitOfWork _unitOfWork;
 
     public CreateProductTargetFromPromotionUseCase(
         IPromotionCandidateRepository promotionRepository,
         IProductTargetRepository productTargetRepository,
         IStoreRepository storeRepository,
+        IStoreResolver storeResolver,
+        IProductIdentityResolver identityResolver,
         IUnitOfWork unitOfWork)
     {
         _promotionRepository = promotionRepository;
         _productTargetRepository = productTargetRepository;
         _storeRepository = storeRepository;
+        _storeResolver = storeResolver;
+        _identityResolver = identityResolver;
         _unitOfWork = unitOfWork;
     }
 
@@ -42,8 +49,8 @@ public sealed class CreateProductTargetFromPromotionUseCase
                 .CandidateNotFound();
         }
 
-        if (promotion.Status == PromotionCandidateStatus.Imported
-            || promotion.ProductTargetId.HasValue)
+        if (promotion.Status == PromotionCandidateStatus.Imported ||
+            promotion.ProductTargetId.HasValue)
         {
             return CreateProductTargetFromPromotionResult
                 .ImportedPreviously();
@@ -69,39 +76,89 @@ public sealed class CreateProductTargetFromPromotionUseCase
             ? promotion.ResolvedUrl ?? promotion.OriginalUrl
             : request.ProductUrl.Trim();
 
-        var targetPrice =
-            request.TargetPrice ?? promotion.AdvertisedPrice;
-
         ProductTarget productTarget;
 
         try
         {
-            productTarget = new ProductTarget(
-                store.Id,
-                promotion.ProductName,
-                productUrl,
-                targetPrice,
-                request.AutoBuyEnabled);
+            var storeResolution = _storeResolver.Resolve(
+                store.Name,
+                productUrl);
+
+            if (storeResolution is null ||
+                storeResolution.RequiresReview ||
+                !string.Equals(
+                    storeResolution.Name,
+                    store.Name,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return CreateProductTargetFromPromotionResult.Failed(
+                    "A URL do produto não corresponde à loja selecionada.");
+            }
+
+            var identity = _identityResolver.Resolve(
+                storeResolution,
+                productUrl);
+
+            var existingTarget =
+                await _productTargetRepository
+                    .GetTrackedByStoreAndExternalProductIdAsync(
+                        store.Id,
+                        identity.ExternalProductId,
+                        cancellationToken);
+
+            productTarget = existingTarget
+                ?? new ProductTarget(
+                    store.Id,
+                    promotion.ProductName,
+                    identity.CanonicalUrl,
+                    request.TargetPrice,
+                    request.AutoBuyEnabled,
+                    identity.ExternalProductId,
+                    promotion.AdvertisedPrice,
+                    monitoringEnabled:
+                        storeResolution.SupportsAutomaticMonitoring);
+
+            if (existingTarget is not null)
+            {
+                productTarget.Observe(
+                    promotion.ProductName,
+                    identity.CanonicalUrl,
+                    promotion.AdvertisedPrice,
+                    DateTime.UtcNow);
+
+                if (request.TargetPrice.HasValue)
+                {
+                    productTarget.ChangeTargetPrice(
+                        request.TargetPrice.Value);
+                }
+
+                if (request.AutoBuyEnabled)
+                    productTarget.EnableAutoBuy();
+            }
+
+            if (existingTarget is null)
+            {
+                await _productTargetRepository.AddAsync(
+                    productTarget,
+                    cancellationToken);
+            }
         }
         catch (ArgumentException exception)
         {
             return CreateProductTargetFromPromotionResult.Failed(
                 exception.Message);
         }
+        catch (InvalidOperationException exception)
+        {
+            return CreateProductTargetFromPromotionResult.Failed(
+                exception.Message);
+        }
 
         promotion.AssignStore(store);
+        promotion.SetResolvedUrl(productUrl);
         promotion.MarkAsImported(productTarget);
 
-        await _productTargetRepository.AddAsync(
-            productTarget,
-            cancellationToken);
-
-        /*
-         * PromotionCandidate e ProductTarget são persistidos
-         * na mesma transação do DbContext.
-         */
-        await _unitOfWork.SaveChangesAsync(
-            cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return CreateProductTargetFromPromotionResult.Created(
             MapProductTarget(productTarget, store.Name),
@@ -118,13 +175,17 @@ public sealed class CreateProductTargetFromPromotionUseCase
             storeName,
             productTarget.Name,
             productTarget.ProductUrl,
+            productTarget.ExternalProductId,
             productTarget.TargetPrice,
+            productTarget.LastObservedPrice,
+            productTarget.LastSeenAt,
             CurrentPrice: null,
             TargetReached: false,
             LastCapturedAt: null,
             productTarget.AutoBuyEnabled,
             productTarget.MonitoringEnabled,
-            productTarget.CreatedAt);
+            productTarget.CreatedAt,
+            productTarget.UpdatedAt);
     }
 
     private static PromotionCandidateResponse MapPromotion(
@@ -142,9 +203,11 @@ public sealed class CreateProductTargetFromPromotionUseCase
             promotion.ResolvedUrl,
             promotion.Coupon,
             promotion.Conditions,
+            promotion.ReviewReason,
             promotion.Status,
             promotion.ProductTargetId,
             promotion.ReceivedAt,
-            promotion.ProcessedAt);
+            promotion.ProcessedAt,
+            promotion.UpdatedAt);
     }
 }

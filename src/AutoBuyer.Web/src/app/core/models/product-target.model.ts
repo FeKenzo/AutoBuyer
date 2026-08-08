@@ -4,11 +4,15 @@ export interface ProductTarget {
   storeName: string;
   name: string;
   productUrl: string;
-  targetPrice: number;
+  externalProductId: string | null;
+  targetPrice: number | null;
+  lastObservedPrice: number | null;
+  lastSeenAt: string | null;
   currentPrice: number | null;
   targetReached: boolean;
   lastCapturedAt: string | null;
   autoBuyEnabled: boolean;
   monitoringEnabled: boolean;
   createdAt: string;
+  updatedAt: string;
 }

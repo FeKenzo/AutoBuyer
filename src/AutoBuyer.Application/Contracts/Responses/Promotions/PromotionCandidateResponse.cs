@@ -14,7 +14,9 @@ public sealed record PromotionCandidateResponse(
     string? ResolvedUrl,
     string? Coupon,
     string? Conditions,
+    string? ReviewReason,
     PromotionCandidateStatus Status,
     Guid? ProductTargetId,
     DateTime ReceivedAt,
-    DateTime? ProcessedAt);
+    DateTime? ProcessedAt,
+    DateTime? UpdatedAt);

@@ -17,6 +17,11 @@ public interface IProductTargetRepository
         Guid id,
         CancellationToken cancellationToken);
 
+    Task<ProductTarget?> GetTrackedByStoreAndExternalProductIdAsync(
+        Guid storeId,
+        string externalProductId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<ProductTarget>> GetAllAsync(
         CancellationToken cancellationToken);
 

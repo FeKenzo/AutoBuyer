@@ -44,9 +44,11 @@ public sealed class GetAllPromotionCandidatesUseCase
             candidate.ResolvedUrl,
             candidate.Coupon,
             candidate.Conditions,
+            candidate.ReviewReason,
             candidate.Status,
             candidate.ProductTargetId,
             candidate.ReceivedAt,
-            candidate.ProcessedAt);
+            candidate.ProcessedAt,
+            candidate.UpdatedAt);
     }
 }

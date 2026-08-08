@@ -54,6 +54,7 @@ public sealed class ProductTargetRepository
         return await _dbContext.ProductTargets
             .AsNoTracking()
             .Where(target => target.MonitoringEnabled)
+            .Where(target => target.TargetPrice.HasValue)
             .Where(target =>
                 target.Store != null &&
                 target.Store.IsEnabled)
@@ -77,10 +78,14 @@ public sealed class ProductTargetRepository
                     : string.Empty,
                 target.Name,
                 target.ProductUrl,
+                target.ExternalProductId,
                 target.TargetPrice,
+                target.LastObservedPrice,
+                target.LastSeenAt,
                 target.AutoBuyEnabled,
                 target.MonitoringEnabled,
                 target.CreatedAt,
+                target.UpdatedAt,
                 _dbContext.PriceHistory
                     .Where(history =>
                         history.ProductTargetId == target.Id)
@@ -112,10 +117,14 @@ public sealed class ProductTargetRepository
                     : string.Empty,
                 target.Name,
                 target.ProductUrl,
+                target.ExternalProductId,
                 target.TargetPrice,
+                target.LastObservedPrice,
+                target.LastSeenAt,
                 target.AutoBuyEnabled,
                 target.MonitoringEnabled,
                 target.CreatedAt,
+                target.UpdatedAt,
                 _dbContext.PriceHistory
                     .Where(history =>
                         history.ProductTargetId == target.Id)
@@ -138,6 +147,20 @@ public sealed class ProductTargetRepository
         return _dbContext.ProductTargets
             .FirstOrDefaultAsync(
                 target => target.Id == id,
+                cancellationToken);
+    }
+
+    public Task<ProductTarget?>
+        GetTrackedByStoreAndExternalProductIdAsync(
+            Guid storeId,
+            string externalProductId,
+            CancellationToken cancellationToken)
+    {
+        return _dbContext.ProductTargets
+            .FirstOrDefaultAsync(
+                target =>
+                    target.StoreId == storeId &&
+                    target.ExternalProductId == externalProductId,
                 cancellationToken);
     }
 

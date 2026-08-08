@@ -26,14 +26,15 @@ public sealed class PromotionCandidateRepository
             cancellationToken);
     }
 
-    public Task<bool> ExistsAsync(
+    public Task<PromotionCandidate?> GetByTelegramSourceAsync(
         long telegramChatId,
         int telegramMessageId,
         CancellationToken cancellationToken)
     {
         return _dbContext.PromotionCandidates
-            .AsNoTracking()
-            .AnyAsync(
+            .Include(candidate => candidate.Store)
+            .Include(candidate => candidate.ProductTarget)
+            .FirstOrDefaultAsync(
                 candidate =>
                     candidate.TelegramChatId == telegramChatId
                     && candidate.TelegramMessageId

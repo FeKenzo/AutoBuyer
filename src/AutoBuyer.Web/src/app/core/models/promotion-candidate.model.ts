@@ -21,6 +21,7 @@ export interface PromotionCandidate {
 
   coupon: string | null;
   conditions: string | null;
+  reviewReason: string | null;
 
   status: PromotionCandidateStatus;
 
@@ -28,4 +29,5 @@ export interface PromotionCandidate {
 
   receivedAt: string;
   processedAt: string | null;
+  updatedAt: string | null;
 }

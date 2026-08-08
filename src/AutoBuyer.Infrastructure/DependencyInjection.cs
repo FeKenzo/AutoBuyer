@@ -1,6 +1,7 @@
 ﻿using AutoBuyer.Application.Abstractions.Persistence;
 using AutoBuyer.Application.Monitoring;
 using AutoBuyer.Application.Notifications;
+using AutoBuyer.Application.Promotions.Resolution;
 using AutoBuyer.Infrastructure.Data;
 using AutoBuyer.Infrastructure.Monitoring;
 using AutoBuyer.Infrastructure.Monitoring.Extractors;
@@ -61,10 +62,6 @@ public static class DependencyInjection
             GenericProductPriceExtractor>();
 
         services.AddScoped<StorePriceExtractorResolver>();
-
-        services.AddScoped<
-            IProductPriceReader,
-            PlaywrightProductPriceReader>();
 
         services.AddScoped<
             IStoreMonitoringStateRepository,

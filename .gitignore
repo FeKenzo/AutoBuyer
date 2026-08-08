@@ -6,3 +6,6 @@
 *.github
 [Bb]in/
 [Oo]bj/
+data/
+*.session
+*.state
