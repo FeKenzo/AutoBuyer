@@ -83,6 +83,78 @@ public sealed class ImportPromotionMessageUseCaseTests
         Assert.Single(fixture.ProductTargets.Items);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_ShortenedLink_ImportsPriceWithoutOpeningUrl()
+    {
+        var fixture = new Fixture();
+        const string shortenedUrl = "https://meli.la/24VyZZt";
+        var request = new ImportPromotionMessageRequest(
+            -1001234567890,
+            40,
+            $"""
+             🟡 Mercado Livre
+             🔥 Placa de vídeo Radeon RX 9070 XT
+             ✅ R$ 3.950,00 no PIX
+             🔗 {shortenedUrl}
+             """);
+
+        var result = await fixture.UseCase.ExecuteAsync(
+            request,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(
+            PromotionCandidateStatus.Imported,
+            result.Promotion!.Status);
+        Assert.Equal(3950m, result.Promotion.AdvertisedPrice);
+        Assert.Equal(shortenedUrl, result.Promotion.OriginalUrl);
+        Assert.Null(result.Promotion.ResolvedUrl);
+
+        var target = Assert.Single(fixture.ProductTargets.Items);
+
+        Assert.Equal(3950m, target.LastObservedPrice);
+        Assert.Equal(shortenedUrl, target.ProductUrl);
+        Assert.NotNull(result.Promotion.ProductTargetId);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_UnchangedCandidateNeedingReview_ReprocessesIt()
+    {
+        var fixture = new Fixture();
+        var request = Request(50, 109m);
+        var parseResult = new TelegramPromotionParser()
+            .Parse(request.Message);
+        var candidate = new PromotionCandidate(
+            request.TelegramChatId,
+            request.TelegramMessageId,
+            parseResult.ProductName!,
+            parseResult.AdvertisedPrice!.Value,
+            parseResult.Url!,
+            request.Message,
+            parseResult.Coupon,
+            parseResult.Conditions);
+
+        candidate.MarkAsNeedsReview(
+            "Não foi possível resolver o link encurtado.");
+
+        await fixture.Promotions.AddAsync(
+            candidate,
+            CancellationToken.None);
+
+        var result = await fixture.UseCase.ExecuteAsync(
+            request,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.True(result.IsUpdate);
+        Assert.Equal(
+            PromotionCandidateStatus.Imported,
+            result.Promotion!.Status);
+        Assert.Null(result.Promotion.ReviewReason);
+        Assert.Single(fixture.Promotions.Items);
+        Assert.Single(fixture.ProductTargets.Items);
+    }
+
     private static ImportPromotionMessageRequest Request(
         int messageId,
         decimal price)
@@ -112,7 +184,6 @@ public sealed class ImportPromotionMessageUseCaseTests
                 Promotions,
                 ProductTargets,
                 Stores,
-                new PassthroughUrlResolver(),
                 new StoreResolver(),
                 new ProductIdentityResolver(),
                 UnitOfWork);
@@ -127,17 +198,6 @@ public sealed class ImportPromotionMessageUseCaseTests
         public StoreRepository Stores { get; }
 
         public UnitOfWork UnitOfWork { get; }
-    }
-
-    private sealed class PassthroughUrlResolver : IPromotionUrlResolver
-    {
-        public Task<PromotionUrlResolution> ResolveAsync(
-            string originalUrl,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(
-                PromotionUrlResolution.Unchanged(originalUrl));
-        }
     }
 
     private sealed class PromotionRepository : IPromotionCandidateRepository
