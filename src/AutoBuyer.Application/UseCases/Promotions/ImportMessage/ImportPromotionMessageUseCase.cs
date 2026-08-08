@@ -4,6 +4,7 @@ using AutoBuyer.Application.Contracts.Responses.Promotions;
 using AutoBuyer.Application.Promotions.Parsing;
 using AutoBuyer.Application.Promotions.Resolution;
 using AutoBuyer.Domain.Entities;
+using AutoBuyer.Domain.Enums;
 
 namespace AutoBuyer.Application.UseCases.Promotions.ImportMessage;
 
@@ -14,7 +15,6 @@ public sealed class ImportPromotionMessageUseCase
     private readonly IPromotionCandidateRepository _promotionRepository;
     private readonly IProductTargetRepository _productTargetRepository;
     private readonly IStoreRepository _storeRepository;
-    private readonly IPromotionUrlResolver _urlResolver;
     private readonly IStoreResolver _storeResolver;
     private readonly IProductIdentityResolver _identityResolver;
     private readonly IUnitOfWork _unitOfWork;
@@ -24,7 +24,6 @@ public sealed class ImportPromotionMessageUseCase
         IPromotionCandidateRepository promotionRepository,
         IProductTargetRepository productTargetRepository,
         IStoreRepository storeRepository,
-        IPromotionUrlResolver urlResolver,
         IStoreResolver storeResolver,
         IProductIdentityResolver identityResolver,
         IUnitOfWork unitOfWork)
@@ -33,7 +32,6 @@ public sealed class ImportPromotionMessageUseCase
         _promotionRepository = promotionRepository;
         _productTargetRepository = productTargetRepository;
         _storeRepository = storeRepository;
-        _urlResolver = urlResolver;
         _storeResolver = storeResolver;
         _identityResolver = identityResolver;
         _unitOfWork = unitOfWork;
@@ -55,7 +53,10 @@ public sealed class ImportPromotionMessageUseCase
                 cancellationToken);
 
         if (existingCandidate is not null &&
-            existingCandidate.OriginalMessage == request.Message.Trim())
+            existingCandidate.OriginalMessage == request.Message.Trim() &&
+            existingCandidate.Status is
+                PromotionCandidateStatus.Imported or
+                PromotionCandidateStatus.Ignored)
         {
             return ImportPromotionMessageResult.Duplicate();
         }
@@ -110,27 +111,9 @@ public sealed class ImportPromotionMessageUseCase
                 cancellationToken);
         }
 
-        var urlResolution = await _urlResolver.ResolveAsync(
-            parseResult.Url,
-            cancellationToken);
-
-        if (!urlResolution.Success)
-        {
-            candidate.MarkAsNeedsReview(
-                urlResolution.Error);
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            return ImportPromotionMessageResult.Imported(
-                Map(candidate),
-                existingCandidate is not null);
-        }
-
-        candidate.SetResolvedUrl(urlResolution.EffectiveUrl);
-
         var storeResolution = _storeResolver.Resolve(
             parseResult.StoreName,
-            urlResolution.EffectiveUrl);
+            parseResult.Url);
 
         if (storeResolution is null)
         {
@@ -170,7 +153,7 @@ public sealed class ImportPromotionMessageUseCase
 
         var identity = _identityResolver.Resolve(
             storeResolution,
-            urlResolution.EffectiveUrl);
+            parseResult.Url);
 
         var productTarget =
             await _productTargetRepository
