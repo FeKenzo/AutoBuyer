@@ -54,6 +54,9 @@ ser tratado como segredo.
 - Terabyte e Pichau ficam elegíveis ao monitoramento, mas só entram no ciclo
   depois que um `TargetPrice` for definido. As demais lojas começam com
   monitoramento desabilitado.
-- Links encurtados são resolvidos antes da identificação da loja e produto.
+- O preço e os demais dados da promoção são extraídos exclusivamente da
+  mensagem do Telegram. A importação não abre a página do produto.
+- Links encurtados conhecidos, como `meli.la` e `amzn.to`, são armazenados
+  como publicados e usados diretamente na identificação da loja e produto.
 - Lojas desconhecidas são cadastradas pela origem do link, mas seus alvos
   permanecem sem monitoramento automático.
