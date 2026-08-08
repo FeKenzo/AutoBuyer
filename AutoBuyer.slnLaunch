@@ -9,6 +9,10 @@
       {
         "Path": "src\\AutoBuyer.Worker\\AutoBuyer.Worker.csproj",
         "Action": "Start"
+      },
+      {
+        "Path": "src\\AutoBuyer.TelegramIngestion.Worker\\AutoBuyer.TelegramIngestion.Worker.csproj",
+        "Action": "Start"
       }
     ]
   }
