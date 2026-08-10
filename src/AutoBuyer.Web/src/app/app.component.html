@@ -1,25 +1,84 @@
-<header class="app-header">
-  <div class="app-header__content">
-    <a
-      class="brand"
-      routerLink="/monitoramentos">
-      AutoBuyer
+<div class="app-shell">
+  <aside class="sidebar" aria-label="Navegação principal">
+    <a class="brand" routerLink="/painel" aria-label="AutoBuyer — início">
+      <span class="brand__mark" aria-hidden="true">
+        <span></span>
+      </span>
+
+      <span>
+        <strong>AutoBuyer</strong>
+        <small>Opportunity desk</small>
+      </span>
     </a>
 
-    <nav>
-      <a
-        routerLink="/monitoramentos"
-        routerLinkActive="active">
-        Monitoramentos
+    <p class="sidebar__label">Workspace</p>
+
+    <nav class="side-nav">
+      <a routerLink="/painel" routerLinkActive="active">
+        <span class="nav-symbol" aria-hidden="true">01</span>
+        <span>
+          Visão geral
+          <small>Resumo da operação</small>
+        </span>
       </a>
 
-      <a
-        routerLink="/promocoes"
-        routerLinkActive="active">
-        Promoções
+      <a routerLink="/monitoramentos" routerLinkActive="active">
+        <span class="nav-symbol" aria-hidden="true">02</span>
+        <span>
+          Monitoramentos
+          <small>Produtos e metas</small>
+        </span>
+      </a>
+
+      <a routerLink="/promocoes" routerLinkActive="active">
+        <span class="nav-symbol" aria-hidden="true">03</span>
+        <span>
+          Promoções
+          <small>Fila do Telegram</small>
+        </span>
       </a>
     </nav>
-  </div>
-</header>
 
-<router-outlet />
+    <div class="sidebar__status">
+      <span class="live-dot" aria-hidden="true"></span>
+      <span>
+        <strong>Ambiente local</strong>
+        <small>API e workers conectados</small>
+      </span>
+    </div>
+  </aside>
+
+  <div class="workspace">
+    <header class="mobile-header">
+      <a class="brand brand--mobile" routerLink="/painel">
+        <span class="brand__mark" aria-hidden="true">
+          <span></span>
+        </span>
+        <strong>AutoBuyer</strong>
+      </a>
+
+      <span class="environment-pill"> MVP ativo </span>
+    </header>
+
+    <div class="route-container">
+      <router-outlet />
+    </div>
+  </div>
+
+  <nav class="mobile-nav" aria-label="Navegação móvel">
+    <a routerLink="/painel" routerLinkActive="active">
+      <span>01</span>
+      Painel
+    </a>
+
+    <a routerLink="/monitoramentos" routerLinkActive="active">
+      <span>02</span>
+      Produtos
+    </a>
+
+    <a routerLink="/promocoes" routerLinkActive="active">
+      <span>03</span>
+      Promoções
+    </a>
+  </nav>
+</div>

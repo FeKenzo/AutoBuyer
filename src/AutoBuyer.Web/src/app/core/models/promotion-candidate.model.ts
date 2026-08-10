@@ -1,9 +1,5 @@
 export type PromotionCandidateStatus =
-  | 'Pending'
-  | 'Imported'
-  | 'Ignored'
-  | 'NeedsReview'
-  | 'UnsupportedStore';
+  'Pending' | 'Imported' | 'Ignored' | 'NeedsReview' | 'UnsupportedStore';
 
 export interface PromotionCandidate {
   id: string;

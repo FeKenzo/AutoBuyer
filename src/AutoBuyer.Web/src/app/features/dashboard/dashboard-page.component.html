@@ -1,0 +1,264 @@
+<main class="page dashboard-page" [attr.aria-busy]="loading()">
+  <header class="page-heading dashboard-heading">
+    <div>
+      <span class="eyebrow">Central de oportunidades</span>
+      <h1>O que merece sua atenção hoje.</h1>
+      <p>
+        Acompanhe metas de preço, promoções recebidas e a saúde dos monitoramentos em uma única
+        visão.
+      </p>
+    </div>
+
+    <div class="heading-actions">
+      @if (lastUpdatedAt()) {
+        <span class="updated-at"> Atualizado {{ formatRelativeTime(lastUpdatedAt()) }} </span>
+      }
+
+      <button
+        type="button"
+        class="button button--secondary"
+        [disabled]="loading()"
+        (click)="loadDashboard()"
+      >
+        {{ loading() ? 'Atualizando…' : 'Atualizar painel' }}
+      </button>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="alert alert--error" role="alert">
+      <div>
+        <strong>Não foi possível carregar os dados.</strong>
+        <span>{{ error() }}</span>
+      </div>
+
+      <button type="button" class="button button--ghost" (click)="loadDashboard()">
+        Tentar novamente
+      </button>
+    </div>
+  }
+
+  @if (loading() && products().length === 0) {
+    <section class="dashboard-skeleton" aria-label="Carregando visão geral">
+      @for (item of [1, 2, 3, 4]; track item) {
+        <div class="skeleton skeleton--stat"></div>
+      }
+    </section>
+  } @else {
+    <section class="stat-grid" aria-label="Resumo da operação">
+      <article class="stat-card stat-card--brand">
+        <span class="stat-card__index">01</span>
+        <div>
+          <strong>{{ activeProductsCount() }}</strong>
+          <span>produtos monitorados</span>
+        </div>
+        <small> {{ products().length }} no catálogo total </small>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-card__index">02</span>
+        <div>
+          <strong>{{ reachedProductsCount() }}</strong>
+          <span>metas atingidas</span>
+        </div>
+        <small class="text-success"> Oportunidades prontas para avaliar </small>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-card__index">03</span>
+        <div>
+          <strong>{{ reviewPromotionsCount() }}</strong>
+          <span>promoções para revisar</span>
+        </div>
+        <small> {{ promotions().length }} mensagens processadas </small>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-card__index">04</span>
+        <div>
+          <strong>
+            {{ operationalStoresCount() }}
+            <span class="stat-card__fraction"> / {{ storeStates().length }} </span>
+          </strong>
+          <span>lojas operacionais</span>
+        </div>
+        <small> {{ unconfiguredProductsCount() }} produtos sem meta </small>
+      </article>
+    </section>
+
+    <section class="quick-actions" aria-label="Ações rápidas">
+      <div>
+        <span class="eyebrow">Próxima ação</span>
+        <h2>Continue construindo sua lista inteligente.</h2>
+      </div>
+
+      <div class="quick-actions__links">
+        <a
+          class="action-link action-link--primary"
+          routerLink="/monitoramentos"
+          [queryParams]="{ novo: 'true' }"
+        >
+          <span>
+            <strong>Novo monitoramento</strong>
+            <small>Cadastre uma URL e uma meta</small>
+          </span>
+          <span aria-hidden="true">↗</span>
+        </a>
+
+        <a class="action-link" routerLink="/promocoes" [queryParams]="{ status: 'NeedsReview' }">
+          <span>
+            <strong>Revisar promoções</strong>
+            <small>Resolva itens que precisam de decisão</small>
+          </span>
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    </section>
+
+    <div class="dashboard-grid">
+      <section class="content-card opportunities-card">
+        <header class="section-heading">
+          <div>
+            <span class="eyebrow">Radar de preços</span>
+            <h2>Produtos em destaque</h2>
+          </div>
+
+          <a class="text-link" routerLink="/monitoramentos"> Ver todos </a>
+        </header>
+
+        @if (opportunityProducts().length === 0) {
+          <div class="empty-state empty-state--compact">
+            <span class="empty-state__mark">AB</span>
+            <div>
+              <strong>Seu radar ainda está vazio</strong>
+              <p>Cadastre um produto ou aguarde a próxima promoção importada.</p>
+            </div>
+          </div>
+        } @else {
+          <div class="opportunity-list">
+            @for (product of opportunityProducts(); track product.id) {
+              <article class="opportunity-row">
+                <div class="store-avatar">
+                  {{ product.storeName.slice(0, 2).toUpperCase() }}
+                </div>
+
+                <div class="opportunity-row__product">
+                  <span>{{ product.storeName }}</span>
+                  <strong>{{ product.name }}</strong>
+                  <small>
+                    {{ getProductPriceSource(product) }}
+                    ·
+                    {{
+                      formatRelativeTime(
+                        product.lastCapturedAt ?? product.lastSeenAt ?? product.updatedAt
+                      )
+                    }}
+                  </small>
+                </div>
+
+                <div class="opportunity-row__price">
+                  <strong>
+                    {{ formatCurrency(getProductPrice(product)) }}
+                  </strong>
+                  <span [class.text-success]="isTargetReached(product)">
+                    {{ getProductOpportunity(product) }}
+                  </span>
+                </div>
+
+                <a
+                  class="row-action"
+                  [href]="product.productUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [attr.aria-label]="'Abrir ' + product.name"
+                >
+                  ↗
+                </a>
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="content-card health-card">
+        <header class="section-heading">
+          <div>
+            <span class="eyebrow">Infraestrutura</span>
+            <h2>Saúde das lojas</h2>
+          </div>
+        </header>
+
+        @if (storeStates().length === 0) {
+          <div class="empty-state empty-state--compact">
+            <div>
+              <strong>Sem leituras do worker</strong>
+              <p>Os estados aparecerão após a primeira rodada de monitoramento.</p>
+            </div>
+          </div>
+        } @else {
+          <div class="health-list">
+            @for (store of storeStates(); track store.host) {
+              <article class="health-row">
+                <span class="health-indicator" [attr.data-status]="store.status"> </span>
+
+                <div>
+                  <strong>{{ getStoreName(store.host) }}</strong>
+                  <small>{{ store.host }}</small>
+                </div>
+
+                <div class="health-row__status">
+                  <strong>
+                    {{ getStoreStatusLabel(store.status) }}
+                  </strong>
+                  <small> {{ store.consecutiveFailures }} falha(s) </small>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="content-card promotions-overview">
+        <header class="section-heading">
+          <div>
+            <span class="eyebrow">Entrada do Telegram</span>
+            <h2>Promoções recentes</h2>
+          </div>
+
+          <a class="text-link" routerLink="/promocoes"> Abrir central </a>
+        </header>
+
+        @if (recentPromotions().length === 0) {
+          <div class="empty-state empty-state--compact">
+            <div>
+              <strong>Nenhuma mensagem processada</strong>
+              <p>As promoções aparecerão aqui quando o worker receber publicações.</p>
+            </div>
+          </div>
+        } @else {
+          <div class="recent-promotions">
+            @for (promotion of recentPromotions(); track promotion.id) {
+              <article class="recent-promotion">
+                <div>
+                  <span>
+                    {{ promotion.storeName ?? 'Loja não identificada' }}
+                  </span>
+                  <strong>{{ promotion.productName }}</strong>
+                </div>
+
+                <div class="recent-promotion__meta">
+                  <strong>
+                    {{ formatCurrency(promotion.advertisedPrice) }}
+                  </strong>
+                  <span class="status-badge" [attr.data-status]="promotion.status">
+                    {{ getPromotionStatusLabel(promotion.status) }}
+                  </span>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+    </div>
+  }
+</main>

@@ -1,204 +1,523 @@
-<main class="page">
-  <header class="page__header">
+<main class="page products-page" [attr.aria-busy]="loading()">
+  <header class="page-heading">
     <div>
-      <span class="eyebrow">AutoBuyer</span>
-      <h1>Monitoramento de preços</h1>
+      <span class="eyebrow">Catálogo monitorado</span>
+      <h1>Produtos e metas de preço.</h1>
       <p>
-        Cadastre produtos, acompanhe o preço atual e receba alertas
-        quando a meta for atingida.
+        Organize o que vale acompanhar, ajuste suas metas e mantenha somente os monitoramentos
+        relevantes.
       </p>
     </div>
 
-    <button
-      type="button"
-      class="button button--secondary"
-      [disabled]="loading()"
-      (click)="loadProducts()">
-      Atualizar
-    </button>
+    <div class="heading-actions">
+      <button
+        type="button"
+        class="button button--secondary"
+        [disabled]="loading()"
+        (click)="loadProducts()"
+      >
+        {{ loading() ? 'Atualizando…' : 'Atualizar' }}
+      </button>
+
+      <button type="button" class="button" (click)="openCreateModal()">
+        <span aria-hidden="true">＋</span>
+        Novo monitoramento
+      </button>
+    </div>
   </header>
 
   @if (error()) {
-    <div class="alert">
-      {{ error() }}
+    <div class="alert alert--error" role="alert">
+      <div>
+        <strong>Algo não saiu como esperado.</strong>
+        <span>{{ error() }}</span>
+      </div>
+      <button
+        type="button"
+        class="alert__close"
+        aria-label="Fechar alerta"
+        (click)="error.set(null)"
+      >
+        ×
+      </button>
     </div>
   }
 
-  <section class="panel">
-    <div class="panel__header">
+  @if (successMessage()) {
+    <div class="alert alert--success" role="status">
       <div>
-        <span class="eyebrow">Novo monitoramento</span>
-        <h2>Cadastrar produto</h2>
+        <strong>Pronto.</strong>
+        <span>{{ successMessage() }}</span>
       </div>
+      <button
+        type="button"
+        class="alert__close"
+        aria-label="Fechar aviso"
+        (click)="successMessage.set(null)"
+      >
+        ×
+      </button>
     </div>
+  }
 
-    <form
-      class="form"
-      [formGroup]="form"
-      (ngSubmit)="createProduct()">
-
-      <label>
-        Loja
-        <select formControlName="storeId">
-          @for (store of stores; track store.id) {
-            <option [value]="store.id">
-              {{ store.name }}
-            </option>
-          }
-        </select>
-      </label>
-
-      <label>
-        Nome do produto
-        <input
-          type="text"
-          formControlName="name"
-          placeholder="RTX 5070 Palit Infinity 3">
-      </label>
-
-      <label class="form__wide">
-        URL do produto
-        <input
-          type="url"
-          formControlName="productUrl"
-          placeholder="https://www.terabyteshop.com.br/produto/...">
-      </label>
-
-      <label>
-        Preço-alvo
-        <input
-          type="number"
-          min="0.01"
-          step="0.01"
-          formControlName="targetPrice">
-      </label>
-
-      <label class="checkbox">
-        <input
-          type="checkbox"
-          formControlName="autoBuyEnabled">
-
-        Habilitar compra automática futuramente
-      </label>
-
-      <div class="form__actions">
-        <button
-          type="submit"
-          class="button"
-          [disabled]="saving()">
-          {{ saving() ? 'Salvando...' : 'Cadastrar' }}
-        </button>
-      </div>
-    </form>
+  <section class="compact-stats" aria-label="Resumo dos produtos">
+    <article>
+      <span>Total no catálogo</span>
+      <strong>{{ products().length }}</strong>
+    </article>
+    <article>
+      <span>Monitorando agora</span>
+      <strong>{{ activeCount() }}</strong>
+    </article>
+    <article>
+      <span>Metas atingidas</span>
+      <strong class="text-success">
+        {{ reachedCount() }}
+      </strong>
+    </article>
+    <article>
+      <span>Sem preço-alvo</span>
+      <strong class="text-warning">
+        {{ missingTargetCount() }}
+      </strong>
+    </article>
   </section>
 
-  <section class="products">
-    <div class="products__header">
+  <section class="toolbar" aria-label="Filtros">
+    <label class="search-field">
+      <span class="sr-only">Buscar produtos</span>
+      <span class="search-field__symbol" aria-hidden="true">⌕</span>
+      <input
+        #searchBox
+        type="search"
+        [value]="searchTerm()"
+        placeholder="Buscar por produto, loja ou código…"
+        (input)="searchTerm.set(searchBox.value)"
+      />
+    </label>
+
+    <label class="select-field">
+      <span>Status</span>
+      <select
+        #statusSelect
+        [value]="statusFilter()"
+        (change)="changeStatusFilter(statusSelect.value)"
+      >
+        <option value="all">Todos</option>
+        <option value="monitoring">Monitorando</option>
+        <option value="reached">Meta atingida</option>
+        <option value="paused">Pausados</option>
+        <option value="missing-target">Sem meta</option>
+      </select>
+    </label>
+
+    <label class="select-field">
+      <span>Loja</span>
+      <select #storeSelect [value]="storeFilter()" (change)="storeFilter.set(storeSelect.value)">
+        <option value="all">Todas</option>
+        @for (store of productStores(); track store) {
+          <option [value]="store">
+            {{ store }}
+          </option>
+        }
+      </select>
+    </label>
+
+    <label class="select-field">
+      <span>Ordenar</span>
+      <select #sortSelect [value]="sortOrder()" (change)="changeSortOrder(sortSelect.value)">
+        <option value="recent">Mais recentes</option>
+        <option value="closest">Mais perto da meta</option>
+        <option value="price-low">Menor preço</option>
+        <option value="price-high">Maior preço</option>
+        <option value="name">Nome A–Z</option>
+      </select>
+    </label>
+  </section>
+
+  <div class="results-heading">
+    <p>
+      <strong>{{ filteredProducts().length }}</strong>
+      {{ filteredProducts().length === 1 ? 'resultado' : 'resultados' }}
+    </p>
+
+    @if (hasActiveFilters()) {
+      <button type="button" class="text-button" (click)="clearFilters()">Limpar filtros</button>
+    }
+  </div>
+
+  @if (loading() && products().length === 0) {
+    <section class="product-grid" aria-label="Carregando produtos">
+      @for (item of [1, 2, 3, 4]; track item) {
+        <div class="skeleton skeleton--product"></div>
+      }
+    </section>
+  } @else if (filteredProducts().length === 0) {
+    <section class="empty-state">
+      <span class="empty-state__mark">AB</span>
       <div>
-        <span class="eyebrow">Produtos cadastrados</span>
-        <h2>Monitoramentos</h2>
-      </div>
+        <strong>
+          {{
+            products().length === 0
+              ? 'Seu catálogo ainda está vazio'
+              : 'Nenhum produto corresponde aos filtros'
+          }}
+        </strong>
+        <p>
+          {{
+            products().length === 0
+              ? 'Cadastre o primeiro produto ou aguarde a importação de promoções pelo Telegram.'
+              : 'Tente remover algum filtro ou buscar por outro termo.'
+          }}
+        </p>
 
-      <span class="counter">
-        {{ products().length }}
-      </span>
-    </div>
-
-    @if (loading()) {
-      <div class="empty-state">
-        Carregando monitoramentos...
+        @if (products().length === 0) {
+          <button type="button" class="button" (click)="openCreateModal()">
+            Criar primeiro monitoramento
+          </button>
+        } @else {
+          <button type="button" class="button button--secondary" (click)="clearFilters()">
+            Limpar filtros
+          </button>
+        }
       </div>
-    } @else if (products().length === 0) {
-      <div class="empty-state">
-        Nenhum produto cadastrado.
-      </div>
-    } @else {
-      <div class="product-grid">
-        @for (product of products(); track product.id) {
-          <article
-            class="product-card"
-            [class.product-card--target]="product.targetReached">
+    </section>
+  } @else {
+    <section class="product-grid" aria-label="Produtos monitorados">
+      @for (product of filteredProducts(); track product.id) {
+        <article
+          class="product-card"
+          [id]="'product-' + product.id"
+          [class.product-card--highlighted]="focusProductId() === product.id"
+          [class.product-card--reached]="isTargetReached(product)"
+        >
+          <header class="product-card__top">
+            <div class="product-identity">
+              <span class="store-avatar">
+                {{ product.storeName.slice(0, 2).toUpperCase() }}
+              </span>
 
-            <header class="product-card__header">
               <div>
-                <span class="store">
+                <span class="product-store">
                   {{ product.storeName }}
                 </span>
-
-                <h3>{{ product.name }}</h3>
-              </div>
-
-              <span
-                class="status"
-                [class.status--success]="product.targetReached"
-                [class.status--disabled]="!product.monitoringEnabled">
-
-                @if (!product.monitoringEnabled) {
-                  Pausado
-                } @else if (product.targetReached) {
-                  Meta atingida
-                } @else {
-                  Monitorando
-                }
-              </span>
-            </header>
-
-            <div class="prices">
-              <div>
-                <span>Preço atual</span>
-                <strong>
-                  {{ formatCurrency(product.currentPrice) }}
-                </strong>
-              </div>
-
-              <div>
-                <span>Preço-alvo</span>
-                <strong>
-                  {{ formatCurrency(product.targetPrice) }}
-                </strong>
+                <h2>{{ product.name }}</h2>
               </div>
             </div>
 
-            @if (product.lastCapturedAt) {
-              <p class="capture-time">
-                Última captura:
-                {{ product.lastCapturedAt | date:'dd/MM/yyyy HH:mm' }}
-              </p>
-            }
+            <span class="status-badge" [attr.data-status]="getProductStatusCode(product)">
+              {{ getProductStatus(product) }}
+            </span>
+          </header>
 
-            <footer class="product-card__actions">
-              <a
-                class="button button--secondary"
-                [href]="product.productUrl"
-                target="_blank"
-                rel="noopener noreferrer">
-                Abrir produto
-              </a>
+          <div class="product-card__price">
+            <span>Último preço conhecido</span>
+            <strong>
+              {{ formatCurrency(getProductPrice(product)) }}
+            </strong>
+            <small>
+              {{ getPriceSource(product) }}
+            </small>
+          </div>
 
-              <button
-                type="button"
-                class="button button--secondary"
-                (click)="changeMonitoring(
-                  product,
-                  !product.monitoringEnabled
-                )">
+          <div class="target-block">
+            <div class="target-block__labels">
+              <span>
+                Meta
+                <strong>
+                  {{ formatCurrency(product.targetPrice) }}
+                </strong>
+              </span>
+
+              <span [class.text-success]="isTargetReached(product)">
+                {{ getTargetDifference(product) }}
+              </span>
+            </div>
+
+            <div
+              class="progress-track"
+              role="progressbar"
+              aria-label="Progresso até a meta"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              [attr.aria-valuenow]="getPriceProgress(product)"
+            >
+              <span [style.width.%]="getPriceProgress(product)"> </span>
+            </div>
+          </div>
+
+          <dl class="product-meta">
+            <div>
+              <dt>Última atividade</dt>
+              <dd>
                 {{
-                  product.monitoringEnabled
-                    ? 'Pausar'
-                    : 'Ativar'
+                  product.lastCapturedAt ?? product.lastSeenAt ?? product.updatedAt
+                    | date: 'dd/MM/yyyy HH:mm'
                 }}
-              </button>
+              </dd>
+            </div>
 
-              <button
-                type="button"
-                class="button button--danger"
-                (click)="deleteProduct(product)">
-                Excluir
-              </button>
-            </footer>
-          </article>
-        }
-      </div>
-    }
-  </section>
+            <div>
+              <dt>Compra automática</dt>
+              <dd>
+                {{ product.autoBuyEnabled ? 'Habilitada' : 'Desabilitada' }}
+              </dd>
+            </div>
+
+            @if (product.externalProductId) {
+              <div>
+                <dt>ID externo</dt>
+                <dd class="truncate" [title]="product.externalProductId">
+                  {{ product.externalProductId }}
+                </dd>
+              </div>
+            }
+          </dl>
+
+          <footer class="product-card__actions">
+            <a
+              class="button button--secondary button--small"
+              [href]="product.productUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Abrir loja ↗
+            </a>
+
+            <button
+              type="button"
+              class="button button--ghost button--small"
+              (click)="openEditModal(product)"
+            >
+              {{ product.targetPrice === null ? 'Definir meta' : 'Editar' }}
+            </button>
+
+            <button
+              type="button"
+              class="button button--ghost button--small"
+              [disabled]="busyProductId() === product.id"
+              (click)="changeMonitoring(product)"
+            >
+              {{ product.monitoringEnabled ? 'Pausar' : 'Retomar' }}
+            </button>
+
+            <button
+              type="button"
+              class="icon-button icon-button--danger"
+              aria-label="Excluir monitoramento"
+              (click)="requestDelete(product)"
+            >
+              ×
+            </button>
+          </footer>
+        </article>
+      }
+    </section>
+  }
 </main>
+
+@if (createModalOpen()) {
+  <div class="modal-backdrop" (click)="closeCreateModal()">
+    <section
+      class="modal modal--wide"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-product-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="modal__header">
+        <div>
+          <span class="eyebrow">Novo monitoramento</span>
+          <h2 id="create-product-title">Adicione um produto ao radar</h2>
+          <p>Informe a página do produto e o maior valor que você aceita pagar.</p>
+        </div>
+
+        <button type="button" class="icon-button" aria-label="Fechar" (click)="closeCreateModal()">
+          ×
+        </button>
+      </header>
+
+      <form class="form-grid" [formGroup]="createForm" (ngSubmit)="createProduct()">
+        <label class="field">
+          <span>Loja</span>
+          <select formControlName="storeId">
+            @for (store of availableStores(); track store.id) {
+              <option [value]="store.id">
+                {{ store.name }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Preço-alvo</span>
+          <div class="money-input">
+            <span>R$</span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              formControlName="targetPrice"
+              placeholder="3.999,00"
+            />
+          </div>
+          @if (createForm.controls.targetPrice.touched && createForm.controls.targetPrice.invalid) {
+            <small class="field-error"> Informe um preço maior que zero. </small>
+          }
+        </label>
+
+        <label class="field field--wide">
+          <span>Nome do produto</span>
+          <input type="text" formControlName="name" placeholder="Ex.: Radeon RX 9070 XT 16 GB" />
+          @if (createForm.controls.name.touched && createForm.controls.name.invalid) {
+            <small class="field-error"> Informe o nome do produto. </small>
+          }
+        </label>
+
+        <label class="field field--wide">
+          <span>URL do produto</span>
+          <input
+            type="url"
+            formControlName="productUrl"
+            placeholder="https://www.loja.com.br/produto/..."
+          />
+          @if (createForm.controls.productUrl.touched && createForm.controls.productUrl.invalid) {
+            <small class="field-error"> Use uma URL completa iniciada por http ou https. </small>
+          }
+        </label>
+
+        <label class="switch-field field--wide">
+          <input type="checkbox" formControlName="autoBuyEnabled" />
+          <span class="switch" aria-hidden="true"></span>
+          <span>
+            <strong>Preparar compra automática</strong>
+            <small> Salva a preferência para o fluxo de compra futuro. </small>
+          </span>
+        </label>
+
+        <footer class="modal__actions field--wide">
+          <button type="button" class="button button--secondary" (click)="closeCreateModal()">
+            Cancelar
+          </button>
+
+          <button type="submit" class="button" [disabled]="saving()">
+            {{ saving() ? 'Criando…' : 'Criar monitoramento' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (selectedProduct(); as product) {
+  <div class="modal-backdrop" (click)="closeEditModal()">
+    <section
+      class="modal modal--wide"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-product-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="modal__header">
+        <div>
+          <span class="eyebrow">
+            {{ product.storeName }}
+          </span>
+          <h2 id="edit-product-title">Ajustar produto e meta</h2>
+          <p>
+            O último preço conhecido é
+            <strong> {{ formatCurrency(getProductPrice(product)) }} </strong>.
+          </p>
+        </div>
+
+        <button type="button" class="icon-button" aria-label="Fechar" (click)="closeEditModal()">
+          ×
+        </button>
+      </header>
+
+      <form class="form-grid" [formGroup]="editForm" (ngSubmit)="saveProduct()">
+        <label class="field field--wide">
+          <span>Nome do produto</span>
+          <input type="text" formControlName="name" />
+        </label>
+
+        <label class="field">
+          <span>Novo preço-alvo</span>
+          <div class="money-input">
+            <span>R$</span>
+            <input type="number" min="0.01" step="0.01" formControlName="targetPrice" />
+          </div>
+          @if (editForm.controls.targetPrice.touched && editForm.controls.targetPrice.invalid) {
+            <small class="field-error"> Informe um preço maior que zero. </small>
+          }
+        </label>
+
+        <div class="field read-only-field">
+          <span>Loja vinculada</span>
+          <strong>{{ product.storeName }}</strong>
+        </div>
+
+        <label class="field field--wide">
+          <span>URL do produto</span>
+          <input type="url" formControlName="productUrl" />
+          @if (editForm.controls.productUrl.touched && editForm.controls.productUrl.invalid) {
+            <small class="field-error"> Use uma URL completa iniciada por http ou https. </small>
+          }
+        </label>
+
+        <label class="switch-field field--wide">
+          <input type="checkbox" formControlName="autoBuyEnabled" />
+          <span class="switch" aria-hidden="true"></span>
+          <span>
+            <strong>Compra automática</strong>
+            <small> Habilite somente quando a meta estiver revisada. </small>
+          </span>
+        </label>
+
+        <footer class="modal__actions field--wide">
+          <button type="button" class="button button--secondary" (click)="closeEditModal()">
+            Cancelar
+          </button>
+
+          <button type="submit" class="button" [disabled]="saving()">
+            {{ saving() ? 'Salvando…' : 'Salvar alterações' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (productToDelete(); as product) {
+  <div class="modal-backdrop" (click)="closeDeleteDialog()">
+    <section
+      class="modal modal--confirm"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="delete-product-title"
+      (click)="$event.stopPropagation()"
+    >
+      <span class="danger-mark" aria-hidden="true">!</span>
+      <h2 id="delete-product-title">Excluir monitoramento?</h2>
+      <p>
+        <strong>{{ product.name }}</strong> será removido da sua lista. Essa ação não pode ser
+        desfeita.
+      </p>
+
+      <footer class="modal__actions">
+        <button type="button" class="button button--secondary" (click)="closeDeleteDialog()">
+          Manter produto
+        </button>
+
+        <button
+          type="button"
+          class="button button--danger"
+          [disabled]="busyProductId() === product.id"
+          (click)="confirmDelete()"
+        >
+          {{ busyProductId() === product.id ? 'Excluindo…' : 'Excluir' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
