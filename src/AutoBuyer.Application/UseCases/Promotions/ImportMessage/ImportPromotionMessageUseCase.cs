@@ -174,8 +174,7 @@ public sealed class ImportPromotionMessageUseCase
                 autoBuyEnabled: false,
                 externalProductId: identity.ExternalProductId,
                 lastObservedPrice: parseResult.AdvertisedPrice.Value,
-                monitoringEnabled:
-                    storeResolution.SupportsAutomaticMonitoring);
+                monitoringEnabled: true);
 
             await _productTargetRepository.AddAsync(
                 productTarget,
