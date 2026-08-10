@@ -115,8 +115,7 @@ public sealed class CreateProductTargetFromPromotionUseCase
                     request.AutoBuyEnabled,
                     identity.ExternalProductId,
                     promotion.AdvertisedPrice,
-                    monitoringEnabled:
-                        storeResolution.SupportsAutomaticMonitoring);
+                    monitoringEnabled: true);
 
             if (existingTarget is not null)
             {
