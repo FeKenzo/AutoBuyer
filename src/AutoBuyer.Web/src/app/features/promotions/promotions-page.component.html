@@ -1,169 +1,276 @@
-<main class="page">
-  <header class="page-header">
+<main class="page promotions-page" [attr.aria-busy]="loading()">
+  <header class="page-heading">
     <div>
-      <span class="eyebrow">
-        AutoBuyer
-      </span>
-
-      <h1>Promoções recebidas</h1>
-
+      <span class="eyebrow">Entrada automática</span>
+      <h1>Central de promoções.</h1>
       <p>
-        Revise mensagens importadas e transforme oportunidades
-        em monitoramentos de preço.
+        Acompanhe o que chegou pelo Telegram, entenda cada decisão do parser e resolva somente as
+        exceções.
       </p>
     </div>
 
-    <div class="header-actions">
-      <span class="pending-counter">
-        {{ pendingCount() }} para revisar
+    <div class="heading-actions">
+      <span class="live-counter">
+        <span class="live-dot" aria-hidden="true"></span>
+        {{ attentionCount() }}
+        {{ attentionCount() === 1 ? 'item para revisar' : 'itens para revisar' }}
       </span>
 
       <button
         type="button"
         class="button button--secondary"
         [disabled]="loading()"
-        (click)="loadPromotions()">
-        Atualizar
+        (click)="loadPromotions()"
+      >
+        {{ loading() ? 'Atualizando…' : 'Atualizar' }}
       </button>
     </div>
   </header>
 
   @if (error()) {
-    <div class="alert alert--error">
-      {{ error() }}
+    <div class="alert alert--error" role="alert">
+      <div>
+        <strong>Algo não saiu como esperado.</strong>
+        <span>{{ error() }}</span>
+      </div>
+      <button
+        type="button"
+        class="alert__close"
+        aria-label="Fechar alerta"
+        (click)="error.set(null)"
+      >
+        ×
+      </button>
     </div>
   }
 
   @if (successMessage()) {
-    <div class="alert alert--success">
-      {{ successMessage() }}
+    <div class="alert alert--success" role="status">
+      <div>
+        <strong>Pronto.</strong>
+        <span>{{ successMessage() }}</span>
+      </div>
+      <button
+        type="button"
+        class="alert__close"
+        aria-label="Fechar aviso"
+        (click)="successMessage.set(null)"
+      >
+        ×
+      </button>
     </div>
   }
 
-  <section class="filters">
-    @for (status of statuses; track status.label) {
-      <button
-        type="button"
-        class="filter-button"
-        [class.filter-button--active]="
-          selectedStatus() === status.value
-        "
-        (click)="changeStatusFilter(status.value)">
-        {{ status.label }}
-      </button>
-    }
+  <section class="compact-stats" aria-label="Resumo das promoções">
+    <article>
+      <span>Mensagens processadas</span>
+      <strong>{{ promotions().length }}</strong>
+    </article>
+    <article>
+      <span>Importadas no catálogo</span>
+      <strong class="text-success">
+        {{ importedCount() }}
+      </strong>
+    </article>
+    <article>
+      <span>Precisam de decisão</span>
+      <strong class="text-warning">
+        {{ attentionCount() }}
+      </strong>
+    </article>
+    <article>
+      <span>Ofertas com cupom</span>
+      <strong>{{ couponCount() }}</strong>
+    </article>
   </section>
 
-  @if (loading()) {
-    <section class="empty-state">
-      Carregando promoções...
+  <section class="promotion-controls">
+    <label class="search-field">
+      <span class="sr-only">Buscar promoções</span>
+      <span class="search-field__symbol" aria-hidden="true">⌕</span>
+      <input
+        #promotionSearch
+        type="search"
+        [value]="searchTerm()"
+        placeholder="Buscar produto, loja, cupom ou mensagem…"
+        (input)="searchTerm.set(promotionSearch.value)"
+      />
+    </label>
+
+    <div class="filter-tabs" role="tablist" aria-label="Filtrar por status">
+      @for (status of statuses; track status.value) {
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="selectedStatus() === status.value"
+          [class.active]="selectedStatus() === status.value"
+          (click)="changeStatusFilter(status.value)"
+        >
+          {{ status.label }}
+          <span>{{ getStatusCount(status.value) }}</span>
+        </button>
+      }
+    </div>
+  </section>
+
+  <div class="results-heading">
+    <p>
+      <strong>{{ filteredPromotions().length }}</strong>
+      {{ filteredPromotions().length === 1 ? 'promoção' : 'promoções' }}
+    </p>
+
+    @if (searchTerm() || selectedStatus() !== 'all') {
+      <button type="button" class="text-button" (click)="clearFilters()">Limpar filtros</button>
+    }
+  </div>
+
+  @if (loading() && promotions().length === 0) {
+    <section class="promotion-list" aria-label="Carregando promoções">
+      @for (item of [1, 2, 3, 4]; track item) {
+        <div class="skeleton skeleton--promotion"></div>
+      }
     </section>
-  } @else if (promotions().length === 0) {
+  } @else if (filteredPromotions().length === 0) {
     <section class="empty-state">
-      Nenhuma promoção encontrada para esse filtro.
+      <span class="empty-state__mark">TG</span>
+      <div>
+        <strong>
+          {{
+            promotions().length === 0
+              ? 'Nenhuma mensagem processada ainda'
+              : 'Nenhuma promoção neste recorte'
+          }}
+        </strong>
+        <p>
+          {{
+            promotions().length === 0
+              ? 'Inicie o worker do Telegram para trazer as publicações recentes.'
+              : 'Altere o filtro ou pesquise por outro termo.'
+          }}
+        </p>
+
+        @if (promotions().length > 0) {
+          <button type="button" class="button button--secondary" (click)="clearFilters()">
+            Mostrar todas
+          </button>
+        }
+      </div>
     </section>
   } @else {
-    <section class="promotion-grid">
-      @for (
-        promotion of promotions();
-        track promotion.id
-      ) {
-        <article
-          class="promotion-card"
-          [class.promotion-card--review]="
-            promotion.status === 'NeedsReview'
-          "
-          [class.promotion-card--imported]="
-            promotion.status === 'Imported'
-          ">
+    <section class="promotion-list" aria-label="Promoções recebidas">
+      @for (promotion of filteredPromotions(); track promotion.id) {
+        <article class="promotion-card" [attr.data-status]="promotion.status">
+          <div class="promotion-card__main">
+            <header class="promotion-card__header">
+              <div class="product-identity">
+                <span class="store-avatar store-avatar--telegram">
+                  {{ (promotion.storeName ?? 'TG').slice(0, 2).toUpperCase() }}
+                </span>
 
-          <header class="promotion-card__header">
-            <div>
-              <span class="telegram-reference">
-                Telegram:
-                {{ promotion.telegramChatId }}
-                /
-                {{ promotion.telegramMessageId }}
+                <div>
+                  <span class="product-store">
+                    {{ promotion.storeName ?? 'Loja não identificada' }}
+                    · Msg. {{ promotion.telegramMessageId }}
+                  </span>
+                  <h2>{{ promotion.productName }}</h2>
+                </div>
+              </div>
+
+              <span class="status-badge" [attr.data-status]="promotion.status">
+                {{ getStatusLabel(promotion.status) }}
               </span>
+            </header>
 
-              <h2>
-                {{ promotion.productName }}
-              </h2>
+            <div class="promotion-card__details">
+              <div class="promotion-price">
+                <span>Preço anunciado</span>
+                <strong>
+                  {{ formatCurrency(promotion.advertisedPrice) }}
+                </strong>
+                <small>
+                  Recebida em
+                  {{ promotion.receivedAt | date: 'dd/MM/yyyy HH:mm' }}
+                </small>
+              </div>
+
+              <div class="promotion-context">
+                @if (promotion.coupon) {
+                  <button type="button" class="coupon" (click)="copyCoupon(promotion)">
+                    <span>
+                      <small>Cupom</small>
+                      <strong>
+                        {{ promotion.coupon }}
+                      </strong>
+                    </span>
+                    <span>
+                      {{ copiedCouponId() === promotion.id ? 'Copiado ✓' : 'Copiar' }}
+                    </span>
+                  </button>
+                }
+
+                @if (promotion.conditions) {
+                  <div class="condition-note">
+                    <span>Condições da oferta</span>
+                    <p>{{ promotion.conditions }}</p>
+                  </div>
+                }
+
+                <div
+                  class="processing-note"
+                  [class.processing-note--warning]="canReview(promotion)"
+                >
+                  <span aria-hidden="true">
+                    {{ canReview(promotion) ? '!' : '✓' }}
+                  </span>
+                  <div>
+                    <strong>
+                      {{ getStatusLabel(promotion.status) }}
+                    </strong>
+                    <p>
+                      {{ getStatusDescription(promotion) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-
-            <span
-              class="status"
-              [attr.data-status]="promotion.status">
-              {{ getStatusLabel(promotion.status) }}
-            </span>
-          </header>
-
-          <div class="price">
-            <span>Preço anunciado</span>
-
-            <strong>
-              {{
-                formatCurrency(
-                  promotion.advertisedPrice
-                )
-              }}
-            </strong>
-          </div>
-
-          @if (promotion.storeName) {
-            <div class="information">
-              <strong>Loja:</strong>
-              {{ promotion.storeName }}
-            </div>
-          }
-
-          @if (promotion.coupon) {
-            <div class="condition-box">
-              <strong>Cupom</strong>
-              <span>{{ promotion.coupon }}</span>
-            </div>
-          }
-
-          @if (promotion.conditions) {
-            <div class="condition-box">
-              <strong>Condições da oferta</strong>
-              <span>{{ promotion.conditions }}</span>
-            </div>
-          }
-
-          <div class="information">
-            <strong>Recebida em:</strong>
-
-            {{
-              promotion.receivedAt
-                | date:'dd/MM/yyyy HH:mm'
-            }}
           </div>
 
           <footer class="promotion-card__actions">
             <a
-              class="button button--secondary"
-              [href]="
-                promotion.resolvedUrl
-                ?? promotion.originalUrl
-              "
+              class="button button--secondary button--small"
+              [href]="getPromotionUrl(promotion)"
               target="_blank"
-              rel="noopener noreferrer">
-              Abrir anúncio
+              rel="noopener noreferrer"
+            >
+              Abrir anúncio ↗
             </a>
+
+            @if (promotion.status === 'Imported' && promotion.productTargetId) {
+              <a
+                class="button button--ghost button--small"
+                routerLink="/monitoramentos"
+                [queryParams]="{
+                  foco: promotion.productTargetId,
+                }"
+              >
+                Ver monitoramento
+              </a>
+            }
 
             @if (canReview(promotion)) {
               <button
                 type="button"
-                class="button"
-                (click)="openConversion(promotion)">
+                class="button button--small"
+                (click)="openConversion(promotion)"
+              >
                 Criar monitoramento
               </button>
 
               <button
                 type="button"
-                class="button button--danger"
-                (click)="ignorePromotion(promotion)">
+                class="button button--ghost button--small text-danger"
+                (click)="requestIgnore(promotion)"
+              >
                 Ignorar
               </button>
             }
@@ -172,123 +279,143 @@
       }
     </section>
   }
-
-  @if (selectedPromotion(); as promotion) {
-    <div
-      class="modal-backdrop"
-      (click)="closeConversion()">
-
-      <section
-        class="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="conversion-title"
-        (click)="$event.stopPropagation()">
-
-        <header class="modal__header">
-          <div>
-            <span class="eyebrow">
-              Criar monitoramento
-            </span>
-
-            <h2 id="conversion-title">
-              {{ promotion.productName }}
-            </h2>
-          </div>
-
-          <button
-            type="button"
-            class="close-button"
-            aria-label="Fechar"
-            (click)="closeConversion()">
-            ×
-          </button>
-        </header>
-
-        @if (promotion.coupon) {
-          <div class="modal-warning">
-            Esta promoção utiliza o cupom
-            <strong>{{ promotion.coupon }}</strong>.
-            O Worker pode observar um preço diferente do
-            preço anunciado.
-          </div>
-        }
-
-        @if (promotion.conditions) {
-          <div class="modal-warning">
-            <strong>Condições:</strong>
-            {{ promotion.conditions }}
-          </div>
-        }
-
-        <form
-          class="conversion-form"
-          [formGroup]="conversionForm"
-          (ngSubmit)="convertPromotion()">
-
-          <label>
-            Loja
-
-            <select formControlName="storeId">
-              <option value="">
-                Selecione uma loja
-              </option>
-
-              @for (store of stores; track store.id) {
-                <option [value]="store.id">
-                  {{ store.name }}
-                </option>
-              }
-            </select>
-          </label>
-
-          <label>
-            Preço-alvo
-
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              formControlName="targetPrice">
-          </label>
-
-          <label class="form-wide">
-            URL do produto
-
-            <input
-              type="url"
-              formControlName="productUrl">
-          </label>
-
-          <label class="checkbox form-wide">
-            <input
-              type="checkbox"
-              formControlName="autoBuyEnabled">
-
-            Habilitar compra automática futuramente
-          </label>
-
-          <footer class="modal__actions">
-            <button
-              type="button"
-              class="button button--secondary"
-              (click)="closeConversion()">
-              Cancelar
-            </button>
-
-            <button
-              type="submit"
-              class="button"
-              [disabled]="submitting()">
-              {{
-                submitting()
-                  ? 'Criando...'
-                  : 'Criar monitoramento'
-              }}
-            </button>
-          </footer>
-        </form>
-      </section>
-    </div>
-  }
 </main>
+
+@if (selectedPromotion(); as promotion) {
+  <div class="modal-backdrop" (click)="closeConversion()">
+    <section
+      class="modal modal--wide"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="convert-promotion-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="modal__header">
+        <div>
+          <span class="eyebrow">
+            Revisão da mensagem
+            {{ promotion.telegramMessageId }}
+          </span>
+          <h2 id="convert-promotion-title">Criar monitoramento</h2>
+          <p>{{ promotion.productName }}</p>
+        </div>
+
+        <button type="button" class="icon-button" aria-label="Fechar" (click)="closeConversion()">
+          ×
+        </button>
+      </header>
+
+      <div class="review-summary">
+        <div>
+          <span>Preço da mensagem</span>
+          <strong>
+            {{ formatCurrency(promotion.advertisedPrice) }}
+          </strong>
+        </div>
+
+        <div>
+          <span>Motivo da revisão</span>
+          <strong>
+            {{ getStatusDescription(promotion) }}
+          </strong>
+        </div>
+      </div>
+
+      @if (promotion.coupon) {
+        <div class="modal-note">
+          A oferta usa o cupom
+          <strong>{{ promotion.coupon }}</strong
+          >. O preço capturado pelo worker pode ser diferente.
+        </div>
+      }
+
+      <form class="form-grid" [formGroup]="conversionForm" (ngSubmit)="convertPromotion()">
+        <label class="field">
+          <span>Loja</span>
+          <select formControlName="storeId">
+            <option value="">Selecione</option>
+            @for (store of availableStores(); track store.id) {
+              <option [value]="store.id">
+                {{ store.name }}
+              </option>
+            }
+          </select>
+          @if (conversionForm.controls.storeId.touched && conversionForm.controls.storeId.invalid) {
+            <small class="field-error"> Selecione a loja correta. </small>
+          }
+        </label>
+
+        <label class="field">
+          <span>Preço-alvo</span>
+          <div class="money-input">
+            <span>R$</span>
+            <input type="number" min="0.01" step="0.01" formControlName="targetPrice" />
+          </div>
+        </label>
+
+        <label class="field field--wide">
+          <span>URL do produto</span>
+          <input type="url" formControlName="productUrl" />
+          @if (
+            conversionForm.controls.productUrl.touched && conversionForm.controls.productUrl.invalid
+          ) {
+            <small class="field-error"> Use uma URL completa iniciada por http ou https. </small>
+          }
+        </label>
+
+        <label class="switch-field field--wide">
+          <input type="checkbox" formControlName="autoBuyEnabled" />
+          <span class="switch" aria-hidden="true"></span>
+          <span>
+            <strong>Compra automática</strong>
+            <small> Salva a preferência para o fluxo futuro. </small>
+          </span>
+        </label>
+
+        <footer class="modal__actions field--wide">
+          <button type="button" class="button button--secondary" (click)="closeConversion()">
+            Cancelar
+          </button>
+
+          <button type="submit" class="button" [disabled]="submitting()">
+            {{ submitting() ? 'Criando…' : 'Confirmar monitoramento' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (promotionToIgnore(); as promotion) {
+  <div class="modal-backdrop" (click)="closeIgnoreDialog()">
+    <section
+      class="modal modal--confirm"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="ignore-promotion-title"
+      (click)="$event.stopPropagation()"
+    >
+      <span class="danger-mark" aria-hidden="true">!</span>
+      <h2 id="ignore-promotion-title">Ignorar esta promoção?</h2>
+      <p>
+        <strong>{{ promotion.productName }}</strong>
+        sairá da fila de revisão, mas continuará no histórico.
+      </p>
+
+      <footer class="modal__actions">
+        <button type="button" class="button button--secondary" (click)="closeIgnoreDialog()">
+          Voltar
+        </button>
+
+        <button
+          type="button"
+          class="button button--danger"
+          [disabled]="busyPromotionId() === promotion.id"
+          (click)="confirmIgnore()"
+        >
+          {{ busyPromotionId() === promotion.id ? 'Ignorando…' : 'Ignorar promoção' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}

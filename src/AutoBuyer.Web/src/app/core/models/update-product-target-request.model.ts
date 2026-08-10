@@ -1,5 +1,4 @@
-export interface CreateProductTargetRequest {
-  storeId: string;
+export interface UpdateProductTargetRequest {
   name: string;
   productUrl: string;
   targetPrice: number;

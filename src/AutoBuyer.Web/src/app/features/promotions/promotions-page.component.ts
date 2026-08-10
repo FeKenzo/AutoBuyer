@@ -1,167 +1,161 @@
 import { CommonModule } from '@angular/common';
 import {
+  ChangeDetectionStrategy,
   Component,
+  HostListener,
   OnInit,
   computed,
   inject,
-  signal
+  signal,
 } from '@angular/core';
-import {
-  FormBuilder,
-  ReactiveFormsModule,
-  Validators
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import {
   PromotionCandidate,
-  PromotionCandidateStatus
+  PromotionCandidateStatus,
 } from '../../core/models/promotion-candidate.model';
-import { PromotionService } from
-  '../../core/services/promotion.service';
+import { PromotionService } from '../../core/services/promotion.service';
+
+type PromotionFilter = PromotionCandidateStatus | 'all';
 
 interface StoreOption {
   id: string;
   name: string;
-  hosts: string[];
 }
 
 @Component({
   selector: 'app-promotions-page',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule
-  ],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './promotions-page.component.html',
-  styleUrl: './promotions-page.component.scss'
+  styleUrl: './promotions-page.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PromotionsPageComponent implements OnInit {
-  private readonly promotionService =
-    inject(PromotionService);
-
-  private readonly formBuilder =
-    inject(FormBuilder);
+  private readonly promotionService = inject(PromotionService);
+  private readonly formBuilder = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
 
   readonly promotions = signal<PromotionCandidate[]>([]);
   readonly loading = signal(false);
   readonly submitting = signal(false);
+  readonly busyPromotionId = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
+  readonly copiedCouponId = signal<string | null>(null);
 
-  readonly selectedStatus =
-    signal<PromotionCandidateStatus | null>(null);
+  readonly searchTerm = signal('');
+  readonly selectedStatus = signal<PromotionFilter>('all');
+  readonly selectedPromotion = signal<PromotionCandidate | null>(null);
+  readonly promotionToIgnore = signal<PromotionCandidate | null>(null);
 
-  readonly selectedPromotion =
-    signal<PromotionCandidate | null>(null);
-
-  readonly stores: StoreOption[] = [
+  private readonly fallbackStores: StoreOption[] = [
     {
       id: '11111111-1111-1111-1111-111111111111',
       name: 'Terabyte',
-      hosts: ['terabyteshop.com.br']
     },
     {
       id: '22222222-2222-2222-2222-222222222222',
       name: 'Pichau',
-      hosts: ['pichau.com.br']
     },
-
-    /*
-     * Substitua pelos IDs reais após inserir essas lojas
-     * na tabela stores.
-     */
-    {
-      id: '33333333-3333-3333-3333-333333333333',
-      name: 'AliExpress',
-      hosts: [
-        'aliexpress.com',
-        's.click.aliexpress.com'
-      ]
-    },
-    {
-      id: '44444444-4444-4444-4444-444444444444',
-      name: 'KaBuM!',
-      hosts: ['kabum.com.br']
-    },
-    {
-      id: '55555555-5555-5555-5555-555555555555',
-      name: 'Mercado Livre',
-      hosts: [
-        'mercadolivre.com.br',
-        'mercadolivre.com'
-      ]
-    },
-    {
-      id: '66666666-6666-6666-6666-666666666666',
-      name: 'Shopee',
-      hosts: ['shopee.com.br']
-    }
   ];
 
   readonly statuses: Array<{
-    value: PromotionCandidateStatus | null;
+    value: PromotionFilter;
     label: string;
   }> = [
-    {
-      value: null,
-      label: 'Todas'
-    },
-    {
-      value: 'Pending',
-      label: 'Pendentes'
-    },
-    {
-      value: 'NeedsReview',
-      label: 'Revisão'
-    },
-    {
-      value: 'Imported',
-      label: 'Importadas'
-    },
-    {
-      value: 'Ignored',
-      label: 'Ignoradas'
-    },
+    { value: 'all', label: 'Todas' },
+    { value: 'NeedsReview', label: 'Revisar' },
+    { value: 'Pending', label: 'Pendentes' },
+    { value: 'Imported', label: 'Importadas' },
     {
       value: 'UnsupportedStore',
-      label: 'Loja não suportada'
-    }
+      label: 'Loja não suportada',
+    },
+    { value: 'Ignored', label: 'Ignoradas' },
   ];
 
-  readonly pendingCount = computed(() =>
-    this.promotions().filter(
-      promotion =>
-        promotion.status === 'Pending' ||
-        promotion.status === 'NeedsReview'
-    ).length
+  readonly availableStores = computed(() => {
+    const stores = new Map<string, StoreOption>();
+
+    for (const store of this.fallbackStores) {
+      stores.set(store.name.toLowerCase(), store);
+    }
+
+    for (const promotion of this.promotions()) {
+      if (promotion.storeId && promotion.storeName) {
+        stores.set(promotion.storeName.toLowerCase(), {
+          id: promotion.storeId,
+          name: promotion.storeName,
+        });
+      }
+    }
+
+    return [...stores.values()].sort((first, second) =>
+      first.name.localeCompare(second.name, 'pt-BR'),
+    );
+  });
+
+  readonly attentionCount = computed(
+    () => this.promotions().filter((promotion) => this.canReview(promotion)).length,
   );
 
-  readonly conversionForm =
-    this.formBuilder.nonNullable.group({
-      storeId: [
-        '',
-        Validators.required
-      ],
-      targetPrice: [
-        0,
-        [
-          Validators.required,
-          Validators.min(0.01)
+  readonly importedCount = computed(
+    () => this.promotions().filter((promotion) => promotion.status === 'Imported').length,
+  );
+
+  readonly couponCount = computed(
+    () => this.promotions().filter((promotion) => Boolean(promotion.coupon)).length,
+  );
+
+  readonly filteredPromotions = computed(() => {
+    const status = this.selectedStatus();
+    const query = this.searchTerm().trim().toLocaleLowerCase('pt-BR');
+
+    return this.promotions()
+      .filter((promotion) => {
+        const matchesStatus = status === 'all' || promotion.status === status;
+
+        const searchableText = [
+          promotion.productName,
+          promotion.storeName ?? '',
+          promotion.coupon ?? '',
+          String(promotion.telegramMessageId),
         ]
-      ],
-      productUrl: [
-        '',
-        [
-          Validators.required,
-          Validators.pattern(/^https?:\/\/.+/i)
-        ]
-      ],
-      autoBuyEnabled: [false]
-    });
+          .join(' ')
+          .toLocaleLowerCase('pt-BR');
+
+        return matchesStatus && (!query || searchableText.includes(query));
+      })
+      .sort(
+        (first, second) =>
+          new Date(second.receivedAt).getTime() - new Date(first.receivedAt).getTime(),
+      );
+  });
+
+  readonly conversionForm = this.formBuilder.nonNullable.group({
+    storeId: ['', Validators.required],
+    targetPrice: [0, [Validators.required, Validators.min(0.01)]],
+    productUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/i)]],
+    autoBuyEnabled: [false],
+  });
 
   ngOnInit(): void {
+    const requestedStatus = this.route.snapshot.queryParamMap.get('status');
+
+    if (requestedStatus && this.isPromotionFilter(requestedStatus)) {
+      this.selectedStatus.set(requestedStatus);
+    }
+
     this.loadPromotions();
+  }
+
+  @HostListener('document:keydown.escape')
+  closeDialogsOnEscape(): void {
+    this.closeConversion();
+    this.closeIgnoreDialog();
   }
 
   loadPromotions(): void {
@@ -169,63 +163,43 @@ export class PromotionsPageComponent implements OnInit {
     this.error.set(null);
 
     this.promotionService
-      .getAll(this.selectedStatus())
-      .pipe(
-        finalize(() => this.loading.set(false))
-      )
+      .getAll()
+      .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: promotions => {
-          this.promotions.set(promotions);
-        },
-        error: error => {
+        next: (promotions) => this.promotions.set(promotions),
+        error: (error) => {
           console.error(error);
-
           this.error.set(
-            'Não foi possível carregar as promoções.'
+            'Não foi possível carregar as promoções. Verifique se a API está em execução.',
           );
-        }
+        },
       });
   }
 
-  changeStatusFilter(
-    status: PromotionCandidateStatus | null
-  ): void {
-    this.selectedStatus.set(status);
+  changeStatusFilter(value: PromotionFilter): void {
+    this.selectedStatus.set(value);
     this.closeConversion();
-    this.loadPromotions();
   }
 
-  openConversion(
-    promotion: PromotionCandidate
-  ): void {
-    this.error.set(null);
-    this.successMessage.set(null);
+  clearFilters(): void {
+    this.searchTerm.set('');
+    this.selectedStatus.set('all');
+  }
+
+  openConversion(promotion: PromotionCandidate): void {
+    this.clearMessages();
     this.selectedPromotion.set(promotion);
 
-    const suggestedStore =
-      this.findSuggestedStore(promotion);
-
     this.conversionForm.reset({
-      storeId: promotion.storeId
-        ?? suggestedStore?.id
-        ?? '',
+      storeId: promotion.storeId ?? this.availableStores()[0]?.id ?? '',
       targetPrice: promotion.advertisedPrice,
-      productUrl:
-        promotion.resolvedUrl
-        ?? promotion.originalUrl,
-      autoBuyEnabled: false
+      productUrl: promotion.resolvedUrl ?? promotion.originalUrl,
+      autoBuyEnabled: false,
     });
   }
 
   closeConversion(): void {
     this.selectedPromotion.set(null);
-
-    this.conversionForm.reset({
-      storeId: '',
-      targetPrice: 0,
-      productUrl: '',
-      autoBuyEnabled: false
-    });
   }
 
   convertPromotion(): void {
@@ -241,139 +215,146 @@ export class PromotionsPageComponent implements OnInit {
     }
 
     this.submitting.set(true);
-    this.error.set(null);
-    this.successMessage.set(null);
-
-    const formValue =
-      this.conversionForm.getRawValue();
+    this.clearMessages();
 
     this.promotionService
-      .createProductTarget(
-        promotion.id,
-        {
-          storeId: formValue.storeId,
-          targetPrice: formValue.targetPrice,
-          productUrl: formValue.productUrl,
-          autoBuyEnabled:
-            formValue.autoBuyEnabled
-        }
-      )
-      .pipe(
-        finalize(() => this.submitting.set(false))
-      )
+      .createProductTarget(promotion.id, this.conversionForm.getRawValue())
+      .pipe(finalize(() => this.submitting.set(false)))
       .subscribe({
-        next: result => {
-          this.successMessage.set(
-            `"${promotion.productName}" foi adicionado aos monitoramentos.`
-          );
-
-          this.closeConversion();
+        next: () => {
+          this.selectedPromotion.set(null);
+          this.successMessage.set('Promoção transformada em monitoramento.');
           this.loadPromotions();
         },
-        error: error => {
+        error: (error) => {
           console.error(error);
-
-          this.error.set(
-            error?.error?.error
-            ?? 'Não foi possível converter a promoção.'
-          );
-        }
+          this.error.set(error?.error?.error ?? 'Não foi possível criar o monitoramento.');
+        },
       });
   }
 
-  ignorePromotion(
-    promotion: PromotionCandidate
-  ): void {
-    const confirmed = window.confirm(
-      `Ignorar a promoção "${promotion.productName}"?`
-    );
+  requestIgnore(promotion: PromotionCandidate): void {
+    this.clearMessages();
+    this.promotionToIgnore.set(promotion);
+  }
 
-    if (!confirmed) {
+  closeIgnoreDialog(): void {
+    this.promotionToIgnore.set(null);
+  }
+
+  confirmIgnore(): void {
+    const promotion = this.promotionToIgnore();
+
+    if (!promotion) {
       return;
     }
 
-    this.error.set(null);
-    this.successMessage.set(null);
+    this.busyPromotionId.set(promotion.id);
+    this.clearMessages();
 
     this.promotionService
       .ignore(promotion.id)
+      .pipe(finalize(() => this.busyPromotionId.set(null)))
       .subscribe({
         next: () => {
-          this.promotions.update(promotions =>
-            promotions.filter(
-              item => item.id !== promotion.id
-            )
+          this.promotions.update((promotions) =>
+            promotions.map((item) =>
+              item.id === promotion.id ? { ...item, status: 'Ignored' } : item,
+            ),
           );
-
-          this.successMessage.set(
-            'Promoção ignorada.'
-          );
+          this.promotionToIgnore.set(null);
+          this.successMessage.set('Promoção removida da fila de revisão.');
         },
-        error: error => {
+        error: (error) => {
           console.error(error);
-
-          this.error.set(
-            error?.error?.error
-            ?? 'Não foi possível ignorar a promoção.'
-          );
-        }
+          this.error.set(error?.error?.error ?? 'Não foi possível ignorar a promoção.');
+        },
       });
   }
 
-  canReview(
-    promotion: PromotionCandidate
-  ): boolean {
-    return promotion.status === 'Pending'
-      || promotion.status === 'NeedsReview'
-      || promotion.status === 'UnsupportedStore';
+  async copyCoupon(promotion: PromotionCandidate): Promise<void> {
+    if (!promotion.coupon) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(promotion.coupon);
+      this.copiedCouponId.set(promotion.id);
+
+      setTimeout(() => {
+        if (this.copiedCouponId() === promotion.id) {
+          this.copiedCouponId.set(null);
+        }
+      }, 1800);
+    } catch (error) {
+      console.error(error);
+      this.error.set('Não foi possível copiar o cupom.');
+    }
   }
 
-  formatCurrency(value: number): string {
-    return new Intl.NumberFormat(
-      'pt-BR',
-      {
-        style: 'currency',
-        currency: 'BRL'
-      }
-    ).format(value);
+  canReview(promotion: PromotionCandidate): boolean {
+    return (
+      promotion.status === 'Pending' ||
+      promotion.status === 'NeedsReview' ||
+      promotion.status === 'UnsupportedStore'
+    );
   }
 
-  getStatusLabel(
-    status: PromotionCandidateStatus
-  ): string {
-    const labels: Record<
-      PromotionCandidateStatus,
-      string
-    > = {
+  getStatusCount(status: PromotionFilter): number {
+    if (status === 'all') {
+      return this.promotions().length;
+    }
+
+    return this.promotions().filter((promotion) => promotion.status === status).length;
+  }
+
+  getStatusLabel(status: PromotionCandidateStatus): string {
+    const labels: Record<PromotionCandidateStatus, string> = {
       Pending: 'Pendente',
       NeedsReview: 'Precisa de revisão',
       Imported: 'Importada',
       Ignored: 'Ignorada',
-      UnsupportedStore: 'Loja não suportada'
+      UnsupportedStore: 'Loja não suportada',
     };
 
     return labels[status];
   }
 
-  private findSuggestedStore(
-    promotion: PromotionCandidate
-  ): StoreOption | undefined {
-    const url =
-      promotion.resolvedUrl
-      ?? promotion.originalUrl;
-
-    try {
-      const host =
-        new URL(url).hostname.toLowerCase();
-
-      return this.stores.find(store =>
-        store.hosts.some(storeHost =>
-          host === storeHost
-          || host.endsWith(`.${storeHost}`)
-        )
-      );
-    } catch {
-      return undefined;
+  getStatusDescription(promotion: PromotionCandidate): string {
+    if (promotion.reviewReason) {
+      return promotion.reviewReason;
     }
+
+    const descriptions: Record<PromotionCandidateStatus, string> = {
+      Pending: 'Aguardando uma decisão.',
+      NeedsReview: 'Confira loja, link e preço.',
+      Imported: 'Produto consolidado no catálogo.',
+      Ignored: 'Removida da fila de trabalho.',
+      UnsupportedStore: 'A loja ainda não possui suporte completo.',
+    };
+
+    return descriptions[promotion.status];
+  }
+
+  getPromotionUrl(promotion: PromotionCandidate): string {
+    return promotion.resolvedUrl ?? promotion.originalUrl;
+  }
+
+  formatCurrency(value: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  }
+
+  private isPromotionFilter(value: string): value is PromotionFilter {
+    return ['all', 'Pending', 'Imported', 'Ignored', 'NeedsReview', 'UnsupportedStore'].includes(
+      value,
+    );
+  }
+
+  private clearMessages(): void {
+    this.error.set(null);
+    this.successMessage.set(null);
   }
 }
