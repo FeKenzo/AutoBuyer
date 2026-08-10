@@ -75,21 +75,10 @@ public sealed class MonitorProductTargetsUseCase
         ProductTarget target,
         CancellationToken cancellationToken)
     {
-        // Precisamos consultar antes de inserir o preço novo.
-        var previousPriceHistory =
-            await _priceHistoryRepository
-                .GetLatestByProductTargetIdAsync(
-                    target.Id,
-                    cancellationToken);
-
-        var result = await _priceReader.ReadAsync(
-            target.ProductUrl,
-            cancellationToken);
-
         if (!Uri.TryCreate(
-            target.ProductUrl,
-            UriKind.Absolute,
-            out var productUri))
+                target.ProductUrl,
+                UriKind.Absolute,
+                out var productUri))
         {
             _logger.LogWarning(
                 "URL inválida para o produto {ProductName}.",
@@ -105,6 +94,17 @@ public sealed class MonitorProductTargetsUseCase
 
         if (!canExecute)
             return;
+
+        // Precisamos consultar antes de inserir o preço novo.
+        var previousPriceHistory =
+            await _priceHistoryRepository
+                .GetLatestByProductTargetIdAsync(
+                    target.Id,
+                    cancellationToken);
+
+        var result = await _priceReader.ReadAsync(
+            target.ProductUrl,
+            cancellationToken);
 
         if (!result.Success || result.Price is null)
         {

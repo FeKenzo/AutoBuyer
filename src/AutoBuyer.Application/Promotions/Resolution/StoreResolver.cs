@@ -11,26 +11,22 @@ public sealed class StoreResolver : IStoreResolver
             "Terabyte",
             "https://www.terabyteshop.com.br",
             ["terabyte", "terabyteshop"],
-            ["terabyteshop.com.br"],
-            true),
+            ["terabyteshop.com.br"]),
         new(
             "Pichau",
             "https://www.pichau.com.br",
             ["pichau"],
-            ["pichau.com.br"],
-            true),
+            ["pichau.com.br"]),
         new(
             "Mercado Livre",
             "https://www.mercadolivre.com.br",
             ["mercado livre", "mercadolivre", "meli"],
-            ["mercadolivre.com.br", "mercadolivre.com", "meli.la"],
-            false),
+            ["mercadolivre.com.br", "mercadolivre.com", "meli.la"]),
         new(
             "Amazon",
             "https://www.amazon.com.br",
             ["amazon"],
-            ["amazon.com.br", "amzn.to"],
-            false),
+            ["amazon.com.br", "amzn.to"]),
         new(
             "Magalu",
             "https://www.magazineluiza.com.br",
@@ -40,14 +36,12 @@ public sealed class StoreResolver : IStoreResolver
                 "magazinevoce.com.br",
                 "magalu.com",
                 "magalu.onelink.me"
-            ],
-            false),
+            ]),
         new(
             "Shopee",
             "https://shopee.com.br",
             ["shopee", "shoppe"],
-            ["shopee.com.br", "s.shopee.com.br"],
-            false)
+            ["shopee.com.br", "s.shopee.com.br"])
     ];
 
     public StoreResolution? Resolve(
@@ -94,7 +88,6 @@ public sealed class StoreResolver : IStoreResolver
                 definition.Name,
                 definition.BaseUrl,
                 true,
-                definition.SupportsAutomaticMonitoring,
                 requiresReview);
         }
 
@@ -105,7 +98,6 @@ public sealed class StoreResolver : IStoreResolver
         return new StoreResolution(
             unknownName,
             uri.GetLeftPart(UriPartial.Authority),
-            false,
             false);
     }
 
@@ -179,6 +171,5 @@ public sealed class StoreResolver : IStoreResolver
         string Name,
         string BaseUrl,
         string[] Aliases,
-        string[] Domains,
-        bool SupportsAutomaticMonitoring);
+        string[] Domains);
 }

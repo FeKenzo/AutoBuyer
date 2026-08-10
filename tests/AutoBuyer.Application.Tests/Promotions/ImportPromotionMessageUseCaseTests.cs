@@ -114,7 +114,37 @@ public sealed class ImportPromotionMessageUseCaseTests
 
         Assert.Equal(3950m, target.LastObservedPrice);
         Assert.Equal(shortenedUrl, target.ProductUrl);
+        Assert.True(target.MonitoringEnabled);
         Assert.NotNull(result.Promotion.ProductTargetId);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_UnknownStore_EnablesGenericMonitoring()
+    {
+        var fixture = new Fixture();
+        var request = new ImportPromotionMessageRequest(
+            -1001234567890,
+            41,
+            """
+            🟢 Loja Nova
+            🔥 Teclado mecânico sem fio
+            ✅ R$ 299,90 no PIX
+            🔗 https://www.lojanova.com.br/produtos/teclado-123
+            """);
+
+        var result = await fixture.UseCase.ExecuteAsync(
+            request,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(
+            PromotionCandidateStatus.Imported,
+            result.Promotion!.Status);
+
+        var target = Assert.Single(fixture.ProductTargets.Items);
+
+        Assert.True(target.MonitoringEnabled);
+        Assert.Equal(299.90m, target.LastObservedPrice);
     }
 
     [Fact]
